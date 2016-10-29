@@ -17,9 +17,12 @@ CREATE OR REPLACE PACKAGE REST_API AS
 
   function Login return rest_api_err;
 
-  function IsSessionValid return boolean;
+  procedure CheckSession(pSession in varchar2,
+                         pToken   in varchar2,
+                         pStatus  out number);
 
-  procedure PrintEcho;
+  function IsSessionValid(pSession in varchar2, pToken in varchar2)
+    return boolean;
 
   procedure Employees(pSession in varchar2,
                       pToken   in varchar2,
@@ -50,12 +53,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   end;
 
   procedure Api(pBody in clob) is
+  
+    lSession     varchar2(40);
+    lToken       varchar2(40);
     lWorkspaceId number;
   
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
   
     lOperation varchar2(255) := '';
+  
+    lOutput clob := '';
   
   begin
   
@@ -103,12 +111,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           end if;
         
         WHEN 'echo' THEN
-          if IsSessionValid() then
-            PrintEcho();
-          else
-            lIsSuccess := false;
-            lError     := Errors(2);
-          end if;
+          apex_json.write('data', 'echo');
         ELSE
           lIsSuccess := false;
           lError     := Errors(4);
@@ -134,9 +137,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lUsername varchar2(255);
     lPassword varchar2(255);
   
-    lSession         varchar2(40);
-    lToken           varchar2(40);
-    lSessionLifeTime date;
+    lSession varchar2(40);
+    lToken   varchar2(40);
   
     lIsSessionValid  boolean;
     lIsAuthenticated boolean;
@@ -144,11 +146,14 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
   
+    lCurrentUserId   number;
+    lCurrentUserName varchar2(255);
+  
   begin
   
     begin
-      lUsername := apex_json.get_varchar2('data.username');
-      lPassword := apex_json.get_varchar2('data.password');
+      lUsername := apex_json.get_varchar2('username');
+      lPassword := apex_json.get_varchar2('password');
     exception
       when others then
         lIsSuccess     := false;
@@ -191,15 +196,20 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('token', lToken);
         APEX_UTIL.SET_SESSION_STATE('TOKEN', lToken);
       
-        select t.session_idle_timeout_on
-          into lSessionLifeTime
-          from APEX_WORKSPACE_SESSIONS t
-         where t.apex_session_id = lSession
-           and t.workspace_name = WorkspaceName;
+        apex_json.open_object('user');
       
-        apex_json.write('session_lifetime', lSessionLifeTime);
+        lCurrentUserId   := APEX_UTIL.GET_CURRENT_USER_ID;
+        lCurrentUserName := upper(APEX_UTIL.GET_USERNAME(lCurrentUserId));
       
-        PrintEcho();
+        apex_json.write('id', lCurrentUserId);
+        apex_json.write('login', lCurrentUserName);
+        apex_json.write('email', APEX_UTIL.GET_EMAIL(lCurrentUserName));
+        apex_json.write('first_name',
+                        APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));
+        apex_json.write('last_name',
+                        APEX_UTIL.GET_LAST_NAME(lCurrentUserName));
+      
+        apex_json.close_object;
       
       else
         lError := Errors(2);
@@ -211,34 +221,58 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     return lError;
   end;
 
-  function IsSessionValid return boolean is
+  procedure CheckSession(pSession in varchar2,
+                         pToken   in varchar2,
+                         pStatus  out number) is
+    lIsSuccess boolean;
+    lError     rest_api_err := Errors(1);
+  begin
+  
+    lIsSuccess := IsSessionValid(pSession, pToken);
+  
+    apex_json.initialize_clob_output;
+  
+    apex_json.open_object;
+  
+    apex_json.write('success', lIsSuccess);
+  
+    if lIsSuccess then
+      pStatus := 200;
+    else
+      PrintErrorJson(lError);
+      pStatus := 401;
+    end if;
+  
+    apex_json.close_object;
+  
+    htp.p(APEX_JSON.get_clob_output);
+  
+    apex_json.free_output;
+  
+  end;
+
+  function IsSessionValid(pSession in varchar2, pToken in varchar2)
+    return boolean is
+  
+    lWorkspaceId number;
   
     lIsAuthenticated boolean;
   
-    lIsSuccess boolean := true;
-  
-    lSession varchar2(255);
-  
-    lToken varchar2(255);
+    lIsSuccess boolean;
   
   begin
   
-    begin
-      lSession := apex_json.get_varchar2('session');
-      lToken   := apex_json.get_varchar2('token');
-    exception
-      when others then
-        lIsSuccess := false;
-    end;
+    lWorkspaceId := apex_util.find_security_group_id(p_workspace => WorkspaceName);
+    apex_util.set_security_group_id(p_security_group_id => lWorkspaceId);
   
-    apex_application.g_instance     := lSession;
+    apex_application.g_instance     := pSession;
     apex_application.g_flow_id      := ApexAppId;
     apex_application.g_flow_step_id := ApexAppPageId;
   
     lIsAuthenticated := APEX_AUTHENTICATION.IS_AUTHENTICATED;
   
     if lIsAuthenticated then
-      if APEX_UTIL.FETCH_APP_ITEM('TOKEN', ApexAppId) = lToken then
+      if APEX_UTIL.FETCH_APP_ITEM('TOKEN', ApexAppId) = pToken then
         lIsSuccess := true;
       else
         lIsSuccess := false;
@@ -248,29 +282,6 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end if;
   
     return lIsSuccess;
-  end;
-
-  procedure PrintEcho is
-    lCurrentUserId   number;
-    lCurrentUserName varchar2(255);
-  begin
-    apex_json.open_object('user');
-  
-    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
-    lCurrentUserId   := APEX_UTIL.GET_USER_ID(lCurrentUserName);
-  
-    apex_json.write('id', lCurrentUserId);
-    apex_json.write('login', lCurrentUserName);
-    apex_json.write('email', APEX_UTIL.GET_EMAIL(lCurrentUserName));
-    apex_json.write('phone', APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 2));
-    apex_json.write('first_name',
-                    APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));
-    apex_json.write('last_name', APEX_UTIL.GET_LAST_NAME(lCurrentUserName));
-  
-    apex_json.write('company',
-                    APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
-  
-    apex_json.close_object;
   end;
 
   procedure Employees(pSession in varchar2,
@@ -284,7 +295,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lRc sys_refcursor;
   begin
   
-    --lIsSuccess := IsSessionValid(pSession, pToken);
+    lIsSuccess := IsSessionValid(pSession, pToken);
   
     apex_json.initialize_clob_output;
   
