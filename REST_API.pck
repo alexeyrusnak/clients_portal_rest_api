@@ -17,13 +17,13 @@ CREATE OR REPLACE PACKAGE REST_API AS
 
   function Login return rest_api_err;
 
+  function Logout return rest_api_err;
+
   function IsSessionValid return boolean;
 
   procedure PrintEcho;
 
-  procedure Employees(pSession in varchar2,
-                      pToken   in varchar2,
-                      pStatus  out number);
+  procedure Employees(pStatus out number);
 
 END REST_API;
 /
@@ -102,9 +102,22 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
           end if;
         
+        WHEN 'logout' THEN
+          if IsSessionValid() then
+            lError := Logout();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
         WHEN 'echo' THEN
           if IsSessionValid() then
+            apex_json.open_object('data');
             PrintEcho();
+            apex_json.close_object;
           else
             lIsSuccess := false;
             lError     := Errors(2);
@@ -169,6 +182,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         when others then
           lError         := Errors(2);
           lError.message := sqlerrm;
+          lIsSuccess     := false;
       end;
     end if;
   
@@ -189,7 +203,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lToken   := dbms_random.string('A', 40);
         apex_json.write('session', lSession);
         apex_json.write('token', lToken);
-        APEX_UTIL.SET_SESSION_STATE('TOKEN', lToken);
+        APEX_UTIL.set_preference('TOKEN',
+                                 lToken,
+                                 APEX_CUSTOM_AUTH.GET_USERNAME);
       
         select t.session_idle_timeout_on
           into lSessionLifeTime
@@ -209,6 +225,28 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end if;
   
     return lError;
+  end;
+
+  function Logout return rest_api_err is
+  
+    lError rest_api_err := Errors(1);
+  
+  begin
+  
+    begin
+    
+      APEX_UTIL.set_preference('TOKEN',
+                               dbms_random.string('A', 40),
+                               APEX_CUSTOM_AUTH.GET_USERNAME);
+    
+    exception
+      when others then
+        lError         := Errors(2);
+        lError.message := sqlerrm;
+    end;
+  
+    return lError;
+  
   end;
 
   function IsSessionValid return boolean is
@@ -238,7 +276,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lIsAuthenticated := APEX_AUTHENTICATION.IS_AUTHENTICATED;
   
     if lIsAuthenticated then
-      if APEX_UTIL.FETCH_APP_ITEM('TOKEN', ApexAppId) = lToken then
+      if APEX_UTIL.get_preference('TOKEN', APEX_CUSTOM_AUTH.GET_USERNAME) =
+         lToken then
         lIsSuccess := true;
       else
         lIsSuccess := false;
@@ -273,9 +312,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     apex_json.close_object;
   end;
 
-  procedure Employees(pSession in varchar2,
-                      pToken   in varchar2,
-                      pStatus  out number) is
+  procedure Employees(pStatus out number) is
   
     lIsSuccess boolean;
   
