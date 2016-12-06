@@ -9,21 +9,63 @@ CREATE OR REPLACE PACKAGE REST_API AS
 
   Errors ErrorsArrType;
 
+  /*
+  Выводит ошикку
+  */
   procedure PrintErrorJson(pErrNum in number);
 
+  /*
+  Выводит ошибку
+  */
   procedure PrintErrorJson(pErrNum in rest_api_err);
 
+  /*
+  Главная процедура, точка входа
+  */
   procedure Api(pBody in clob);
 
+  /*
+  Логин
+  */
   function Login return rest_api_err;
 
+  /*
+  Логаут
+  */
   function Logout return rest_api_err;
 
+  /*
+  Проверка годности сессии
+  */
   function IsSessionValid return boolean;
 
+  /*
+  Вывод данных пользователя
+  */
   procedure PrintEcho;
 
+  /*
+  Сотрудники - пока просто пример
+  */
   procedure Employees(pStatus out number);
+
+  /*
+  Вывод списка заказов
+  */
+
+  type t_Order is record(
+    empno emp.empno%type,
+    ename emp.ename%type,
+    job   emp.job%type,
+    rn    number);
+
+  type tbl_Orders is table of t_Order;
+
+  function getOrders return tbl_Orders
+    pipelined
+    parallel_enable;
+
+  procedure PrintOrders;
 
 END REST_API;
 /
@@ -96,6 +138,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     if lIsSuccess then
       CASE lOperation
+      
         WHEN 'login' THEN
           lError := Login();
           if lError.success != 1 then
@@ -122,9 +165,19 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
+        
+        WHEN 'orders' THEN
+          if IsSessionValid() then
+            PrintOrders();
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
         ELSE
           lIsSuccess := false;
           lError     := Errors(4);
+        
       END CASE;
     end if;
   
@@ -279,6 +332,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       if APEX_UTIL.get_preference('TOKEN', APEX_CUSTOM_AUTH.GET_USERNAME) =
          lToken then
         lIsSuccess := true;
+        APEX_CUSTOM_AUTH.SET_SESSION_ID(lSession);
+        APEX_CUSTOM_AUTH.SET_USER(APEX_CUSTOM_AUTH.GET_USERNAME);
       else
         lIsSuccess := false;
       end if;
@@ -344,6 +399,66 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     htp.p(APEX_JSON.get_clob_output);
   
     apex_json.free_output;
+  
+  end;
+
+  /*
+  Вывод списка заказов
+  */
+  procedure PrintOrders is
+    lCurrentUserId   number;
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+  
+    lCollectionName   varchar2(255) := 'ORDERS';
+    lCollectionExists boolean;
+  
+    lRc sys_refcursor;
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCurrentUserId   := APEX_UTIL.GET_USER_ID(lCurrentUserName);
+    lCompanyId       := APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1);
+  
+    -- Формирование коллекции
+    lCollectionExists := APEX_COLLECTION.COLLECTION_EXISTS(lCollectionName);
+  
+    if lCollectionExists then
+      APEX_COLLECTION.DELETE_COLLECTION(lCollectionName);
+    end if;
+  
+    APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
+  
+    for l_c in (select * from TABLE(getOrders())) loop
+      APEX_COLLECTION.ADD_MEMBER(p_collection_name => lCollectionName,
+                                 p_c001            => l_c.rn,
+                                 p_c002            => l_c.empno,
+                                 p_c003            => l_c.ename,
+                                 p_c004            => l_c.job);
+    end loop;
+  
+    open lRc for
+      select c.c001 "rn", c.c002 "empno", c.c003 "ename", c.c004 "job"
+        from apex_collections c
+       where c.collection_name = lCollectionName;
+    apex_json.write('data', lRc);
+  
+  end;
+
+  function getOrders return tbl_Orders
+    pipelined
+    parallel_enable is
+  begin
+    for cur in (select emp.empno,
+                       emp.ename,
+                       emp.job,
+                       row_number() over(order by empno) rn
+                  from emp) loop
+    
+      pipe row(cur);
+    
+    end loop;
+  
+    return;
   
   end;
 
