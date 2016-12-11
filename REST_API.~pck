@@ -10,7 +10,7 @@ CREATE OR REPLACE PACKAGE REST_API AS
   Errors ErrorsArrType;
 
   /*
-  Выводит ошикку
+  Выводит ошибку
   */
   procedure PrintErrorJson(pErrNum in number);
 
