@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE REST_API AS
   ApexAppPageId number := 1; -- ИД страницы Апекс-приложения
   WorkspaceName varchar2(255) := 'REST'; -- Воркспейс
 
-  PkgDefaultDateFormat varchar2(255) := 'DD.MM.YYYY HH24:MI:SS'; -- Формат даты при конвертациях в строку и обратно
+  PkgDefaultDateFormat varchar2(255) := 'YYYY-MM-DD HH24:MI:SS'; -- Формат даты при конвертациях в строку и обратно
   PkgDefaultOffset     number := 1; -- Значение по умолчанию для переменной offset
   PkgDefaultLimit      number := 10; -- Значение по умолчанию для переменной limit
 
@@ -77,6 +77,11 @@ CREATE OR REPLACE PACKAGE REST_API AS
     parallel_enable;
 
   function PrintOrders return rest_api_err;
+
+  /*
+  Вывод информации по конкретному заказу
+  */
+  function PrintOrder return rest_api_err;
 
 END REST_API;
 /
@@ -200,6 +205,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         WHEN 'orders' THEN
           if IsSessionValid() then
             lError := PrintOrders();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
+        WHEN 'orders_get' THEN
+          if IsSessionValid() then
+            lError := PrintOrder();
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -546,7 +562,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                                                   PkgDefaultDateFormat),
                                      p_c013            => to_char(l_c.date_to,
                                                                   PkgDefaultDateFormat),
-                                     p_c014            => l_c.ts_id,
+                                     p_c014            => l_c.te_info,
                                      p_c015            => l_c.port_svh,
                                      p_c016            => l_c.cargo_country);
         end loop;
@@ -569,7 +585,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                c.c011 "created_at",
                c.c012 "date_from",
                c.c013 "date_to",
-               c.c014 "ts_id",
+               c.c014 "te_info",
                c.c015 "port_svh",
                c.c016 "cargo_country"
         
@@ -594,6 +610,143 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       apex_json.close_object();
     
+    end if;
+  
+    return lError;
+  
+  end;
+
+  /*
+  Вывод информации по конкретному заказу
+  */
+  function PrintOrder return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    --lCurrentUserId   number;
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+  
+    lRc sys_refcursor;
+  
+    lOrderId number := null;
+  
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
+                                                          1));
+  
+    -- filters
+    begin
+    
+      lOrderId := apex_json.get_number(p_path    => 'data.id',
+                                       p_default => null);
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+  
+    if lIsSuccess then
+    
+      -- Данные по заказу
+      apex_json.open_object('data');
+    
+      for l_c in (select *
+                    from TABLE(sbc.mcsf_api.fn_orders_get(pID => lOrderId))) loop
+      
+        apex_json.write('id', l_c.id);
+        apex_json.write('consignor', l_c.consignor);
+        apex_json.write('consignee', l_c.consignee);
+        apex_json.write('created_at',
+                        to_char(l_c.created_at, PkgDefaultDateFormat));
+        apex_json.write('status', l_c.status);
+      
+        -- messages[]
+        open lRc for
+          select m.id "id",
+                 m.from_mes "from_mes",
+                 m.content_mes "content_mes",
+                 to_char(m.created_at, PkgDefaultDateFormat) "created_at",
+                 m.status "status",
+                 m.order_id "order_id"
+            from table(l_c.messages) m;
+        apex_json.write('messages', lRc);
+      
+        -- cargo
+        apex_json.open_object('cargo');
+      
+        for elem in 1 .. l_c.cargo.count loop
+          rest_api_helper.PrintT_CARGO(l_c.cargo(elem));
+        end loop;
+      
+        apex_json.close_object;
+      
+        -- unit
+        apex_json.open_object('unit');
+      
+        for elem in 1 .. l_c.unit.count loop
+          rest_api_helper.PrintT_UNIT(l_c.unit(elem));
+        end loop;
+      
+        apex_json.close_object;
+      
+        -- doc[]
+        apex_json.open_array('doc');
+      
+        for elem in 1 .. l_c.doc.count loop
+          apex_json.open_object;
+          rest_api_helper.PrintT_DOC(l_c.doc(elem));
+          apex_json.close_object;
+        end loop;
+      
+        apex_json.close_array;
+      
+        apex_json.write('receivable_cost', l_c.receivable_cost);
+        apex_json.write('amount_cost', l_c.amount_cost);
+        apex_json.write('receivable_date',
+                        to_char(l_c.receivable_date, PkgDefaultDateFormat));
+        apex_json.write('receivable_status', l_c.receivable_status);
+        apex_json.write('departure_port', l_c.departure_port);
+        apex_json.write('departure_country', l_c.departure_country);
+        apex_json.write('container_type', l_c.container_type);
+        apex_json.write('container_prefix', l_c.container_prefix);
+        apex_json.write('container_prefix', l_c.container_prefix);
+        apex_json.write('date_shipment',
+                        to_char(l_c.date_shipment, PkgDefaultDateFormat));
+        apex_json.write('date_transshipment',
+                        to_char(l_c.date_transshipment,
+                                PkgDefaultDateFormat));
+        apex_json.write('date_arrival',
+                        to_char(l_c.date_arrival, PkgDefaultDateFormat));
+        apex_json.write('date_upload',
+                        to_char(l_c.date_upload, PkgDefaultDateFormat));
+        apex_json.write('date_export',
+                        to_char(l_c.date_export, PkgDefaultDateFormat));
+        apex_json.write('date_submission',
+                        to_char(l_c.date_submission, PkgDefaultDateFormat));
+        apex_json.write('arrival_city', l_c.arrival_city);
+        apex_json.write('arrival_port', l_c.arrival_port);
+        apex_json.write('arrival_ship', l_c.arrival_ship);
+        apex_json.write('gtd_number', l_c.gtd_number);
+        apex_json.write('gtd_date',
+                        to_char(l_c.gtd_date, PkgDefaultDateFormat));
+        apex_json.write('gtd_issuance',
+                        to_char(l_c.gtd_issuance, PkgDefaultDateFormat));
+        apex_json.write('data_logisticians', l_c.data_logisticians);
+        apex_json.write('rummage_count', l_c.rummage_count);
+      
+        -- rummage_dates[]
+        apex_json.open_array('rummage_dates');
+      
+        for elem in 1 .. l_c.rummage_dates.count loop
+          apex_json.write(l_c.rummage_dates(elem).rummage_date);
+        end loop;
+        apex_json.close_array;
+      
+      end loop;
+    
+      apex_json.close_object;
     end if;
   
     return lError;
