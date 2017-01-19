@@ -653,7 +653,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.open_object('data');
     
       for l_c in (select *
-                    from TABLE(sbc.mcsf_api.fn_orders_get(pID => lOrderId))) loop
+                    from TABLE(sbc.mcsf_api.fn_orders_get(pID     => lOrderId,
+                                                          pClntId => lCompanyId))) loop
       
         apex_json.write('id', l_c.id);
         apex_json.write('consignor', l_c.consignor);
