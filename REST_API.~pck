@@ -557,7 +557,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c008            => l_c.notification_count,
                                      p_c009            => l_c.cargo_name,
                                      p_c010            => l_c.contractor,
-                                     p_c011            => l_c.created_at,
+                                     p_c011            => to_char(l_c.created_at,
+                                                                  PkgDefaultDateFormat),
                                      p_c012            => to_char(l_c.date_from,
                                                                   PkgDefaultDateFormat),
                                      p_c013            => to_char(l_c.date_to,
@@ -570,6 +571,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       end if;
     
       -- Постраничный вывод данных из коллекции
+      /*
       open lRc for
         select c.seq_id "seq_id",
                to_number(c.c001) "id",
@@ -593,8 +595,61 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
          where c.collection_name = lCollectionName
            and c.seq_id > lOffset
            and c.seq_id <= lOffset + lLimit;
+      
+      apex_json.write('data', lRc);*/
     
-      apex_json.write('data', lRc);
+      apex_json.open_array('data');
+    
+      for l_c in (select c.seq_id "seq_id",
+                         to_number(c.c001) "id",
+                         c.c002 "place_from",
+                         c.c003 "place_to",
+                         c.c004 "status",
+                         to_number(c.c005) "status_id",
+                         to_number(c.c006) "receivables",
+                         to_number(c.c007) "amount",
+                         to_number(c.c008) "notification_count",
+                         c.c009 "cargo_name",
+                         c.c010 "contractor",
+                         c.c011 "created_at",
+                         c.c012 "date_from",
+                         c.c013 "date_to",
+                         c.c014 "te_info",
+                         c.c015 "port_svh",
+                         c.c016 "cargo_country"
+                  
+                    from apex_collections c
+                   where c.collection_name = lCollectionName
+                     and c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+      
+        apex_json.open_object;
+      
+        apex_json.write('seq_id', l_c."seq_id", true);
+        apex_json.write('id', l_c."id", true);
+        apex_json.write('place_from', l_c."place_from", true);
+        apex_json.write('place_to', l_c."place_to", true);
+        apex_json.write('status', l_c."status", true);
+        apex_json.write('status_id', l_c."status_id", true);
+        apex_json.write('receivables', l_c."receivables", true);
+        apex_json.write('amount', l_c."amount", true);
+        apex_json.write('notification_count',
+                        l_c."notification_count",
+                        true);
+        apex_json.write('cargo_name', l_c."cargo_name", true);
+        apex_json.write('contractor', l_c."contractor", true);
+        apex_json.write('created_at', l_c."created_at", true);
+        apex_json.write('date_from', l_c."date_from", true);
+        apex_json.write('date_to', l_c."date_to", true);
+        apex_json.write('te_info', l_c."te_info", true);
+        apex_json.write('port_svh', l_c."port_svh", true);
+        apex_json.write('cargo_country', l_c."cargo_country", true);
+      
+        apex_json.close_object;
+      
+      end loop;
+    
+      apex_json.close_array;
     
       -- Pager
       apex_json.open_object('pager');
