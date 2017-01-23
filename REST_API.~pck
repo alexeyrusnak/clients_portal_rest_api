@@ -476,6 +476,12 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lPeriodTo   date := SYSDATE;
     lStatusId   number := null;
   
+    lSortId          varchar2(4) := null;
+    lSortCreatedAt   varchar2(4) := null;
+    lSortDateFrom    varchar2(4) := null;
+    lSortDateTo      varchar2(4) := null;
+    lSortReceivables varchar2(4) := null;
+  
     lFiltersState    varchar2(255) := null;
     lFiltersPrevious varchar2(255) := null;
   
@@ -504,10 +510,31 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       lStatusId := apex_json.get_number(p_path    => 'filter.status_id',
                                         p_default => null);
+    
     exception
       when others then
         lIsSuccess := false;
         lError     := Errors(5);
+    end;
+  
+    -- order by
+    begin
+    
+      lSortId          := apex_json.get_varchar2(p_path    => 'order.id',
+                                                 p_default => null);
+      lSortCreatedAt   := apex_json.get_varchar2(p_path    => 'order.created_at',
+                                                 p_default => null);
+      lSortDateFrom    := apex_json.get_varchar2(p_path    => 'order.date_from',
+                                                 p_default => null);
+      lSortDateTo      := apex_json.get_varchar2(p_path    => 'order.date_to',
+                                                 p_default => null);
+      lSortReceivables := apex_json.get_varchar2(p_path    => 'order.receivables',
+                                                 p_default => null);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(6);
     end;
   
     -- Проверяем, изменились ли фильтры
@@ -515,9 +542,16 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                                  apex_application.g_instance,
                                                  lCurrentUserName);
   
-    lFiltersState := to_char(lPeriodFrom, PkgDefaultDateFormat) ||
-                     to_char(lPeriodTo, PkgDefaultDateFormat) ||
-                     to_char(lStatusId);
+    lFiltersState := 'lPeriodFrom=' ||
+                     to_char(lPeriodFrom, PkgDefaultDateFormat) || ';' ||
+                     'lPeriodTo=' ||
+                     to_char(lPeriodTo, PkgDefaultDateFormat) || ';' ||
+                     'lStatusId=' || to_char(lStatusId) || ';' ||
+                     'lSortId=' || to_char(lSortId) || ';' ||
+                     'lSortCreatedAt=' || to_char(lSortCreatedAt) || ';' ||
+                     'lSortDateFrom=' || to_char(lSortDateFrom) || ';' ||
+                     'lSortDateTo=' || to_char(lSortDateTo) || ';' ||
+                     'lSortReceivables=' || to_char(lSortReceivables) || ';';
   
     if lFiltersPrevious = lFiltersState then
       lShouldResetCollection := false;
@@ -542,10 +576,15 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
       
         for l_c in (select *
-                      from TABLE(sbc.mcsf_api.get_orders(pClntId    => lCompanyId,
-                                                         pDate_from => lPeriodFrom,
-                                                         pDate_to   => lPeriodTo,
-                                                         pStatus_id => lStatusId))) loop
+                      from TABLE(sbc.mcsf_api.get_orders(pClntId          => lCompanyId,
+                                                         pDate_from       => lPeriodFrom,
+                                                         pDate_to         => lPeriodTo,
+                                                         pStatus_id       => lStatusId,
+                                                         pSortId          => lSortId,
+                                                         pSortCreated_at  => lSortCreatedAt,
+                                                         pSortDate_from   => lSortDateFrom,
+                                                         pSortDate_to     => lSortDateTo,
+                                                         pSortReceivables => lSortReceivables))) loop
           APEX_COLLECTION.ADD_MEMBER(p_collection_name => lCollectionName,
                                      p_c001            => l_c.id,
                                      p_c002            => l_c.place_from,
@@ -831,7 +870,7 @@ BEGIN
 
   Errors := ErrorsArrType();
 
-  Errors.EXTEND(5);
+  Errors.EXTEND(6);
 
   Errors(1) := rest_api_err('success', 'success', 1);
 
@@ -844,6 +883,8 @@ BEGIN
   Errors(4) := rest_api_err('bad_operation', 'Bad operation', 0);
 
   Errors(5) := rest_api_err('bad_filter', 'Bad filter', 0);
+
+  Errors(6) := rest_api_err('bad_order', 'Bad order', 0);
 
 END REST_API;
 /
