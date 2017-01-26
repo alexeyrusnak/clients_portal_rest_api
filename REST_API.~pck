@@ -750,12 +750,13 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                     from TABLE(sbc.mcsf_api.fn_orders_get(pID     => lOrderId,
                                                           pClntId => lCompanyId))) loop
       
-        apex_json.write('id', l_c.id);
-        apex_json.write('consignor', l_c.consignor);
-        apex_json.write('consignee', l_c.consignee);
+        apex_json.write('id', l_c.id, true);
+        apex_json.write('consignor', l_c.consignor, true);
+        apex_json.write('consignee', l_c.consignee, true);
         apex_json.write('created_at',
-                        to_char(l_c.created_at, PkgDefaultDateFormat));
-        apex_json.write('status', l_c.status);
+                        to_char(l_c.created_at, PkgDefaultDateFormat),
+                        true);
+        apex_json.write('status', l_c.status, true);
       
         -- messages[]
         open lRc for
@@ -797,39 +798,46 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
         apex_json.close_array;
       
-        apex_json.write('receivable_cost', l_c.receivable_cost);
-        apex_json.write('amount_cost', l_c.amount_cost);
-        apex_json.write('receivable_date',
-                        to_char(l_c.receivable_date, PkgDefaultDateFormat));
-        apex_json.write('receivable_status', l_c.receivable_status);
-        apex_json.write('departure_port', l_c.departure_port);
-        apex_json.write('departure_country', l_c.departure_country);
-        apex_json.write('container_type', l_c.container_type);
-        apex_json.write('container_prefix', l_c.container_prefix);
-        apex_json.write('container_prefix', l_c.container_prefix);
+        --apex_json.write('receivable_cost', l_c.receivable_cost, true);
+        --apex_json.write('amount_cost', l_c.amount_cost, true);
+        --apex_json.write('receivable_date', to_char(l_c.receivable_date, PkgDefaultDateFormat), true);
+        --apex_json.write('receivable_status', l_c.receivable_status, true);
+        apex_json.write('departure_port', l_c.departure_port, true);
+        apex_json.write('departure_country', l_c.departure_country, true);
+        apex_json.write('container_type', l_c.container_type, true);
+        apex_json.write('container_prefix', l_c.container_prefix, true);
+        apex_json.write('container_number', l_c.container_number, true);
         apex_json.write('date_shipment',
-                        to_char(l_c.date_shipment, PkgDefaultDateFormat));
+                        to_char(l_c.date_shipment, PkgDefaultDateFormat),
+                        true);
         apex_json.write('date_transshipment',
                         to_char(l_c.date_transshipment,
-                                PkgDefaultDateFormat));
+                                PkgDefaultDateFormat),
+                        true);
         apex_json.write('date_arrival',
-                        to_char(l_c.date_arrival, PkgDefaultDateFormat));
+                        to_char(l_c.date_arrival, PkgDefaultDateFormat),
+                        true);
         apex_json.write('date_upload',
-                        to_char(l_c.date_upload, PkgDefaultDateFormat));
+                        to_char(l_c.date_upload, PkgDefaultDateFormat),
+                        true);
         apex_json.write('date_export',
-                        to_char(l_c.date_export, PkgDefaultDateFormat));
+                        to_char(l_c.date_export, PkgDefaultDateFormat),
+                        true);
         apex_json.write('date_submission',
-                        to_char(l_c.date_submission, PkgDefaultDateFormat));
-        apex_json.write('arrival_city', l_c.arrival_city);
-        apex_json.write('arrival_port', l_c.arrival_port);
-        apex_json.write('arrival_ship', l_c.arrival_ship);
-        apex_json.write('gtd_number', l_c.gtd_number);
+                        to_char(l_c.date_submission, PkgDefaultDateFormat),
+                        true);
+        apex_json.write('arrival_city', l_c.arrival_city, true);
+        apex_json.write('arrival_port', l_c.arrival_port, true);
+        apex_json.write('arrival_ship', l_c.arrival_ship, true);
+        apex_json.write('gtd_number', l_c.gtd_number, true);
         apex_json.write('gtd_date',
-                        to_char(l_c.gtd_date, PkgDefaultDateFormat));
+                        to_char(l_c.gtd_date, PkgDefaultDateFormat),
+                        true);
         apex_json.write('gtd_issuance',
-                        to_char(l_c.gtd_issuance, PkgDefaultDateFormat));
+                        to_char(l_c.gtd_issuance, PkgDefaultDateFormat),
+                        true);
         apex_json.write('data_logisticians', l_c.data_logisticians);
-        apex_json.write('rummage_count', l_c.rummage_count);
+        --apex_json.write('rummage_count', l_c.rummage_count, true);
       
         -- rummage_dates[]
         apex_json.open_array('rummage_dates');
