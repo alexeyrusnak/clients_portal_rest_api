@@ -3,22 +3,22 @@ create or replace package REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_DOC ג JSON
   */
-  procedure PrintT_DOC(pDoc in sbc.T_DOC);
+  procedure PrintT_DOC(pDoc in T_DOC);
 
   /*
   ֲûגמהטע מבתוךע T_UNIT ג JSON
   */
-  procedure PrintT_UNIT(pUnit in sbc.T_UNIT);
+  procedure PrintT_UNIT(pUnit in T_UNIT);
 
   /*
   ֲûגמהטע מבתוךע T_POINT ג JSON
   */
-  procedure PrintT_POINT(pPoint in sbc.T_POINT);
+  procedure PrintT_POINT(pPoint in T_POINT);
 
   /*
   ֲûגמהטע מבתוךע T_CARGO ג JSON
   */
-  procedure PrintT_CARGO(pCargo in sbc.T_CARGO);
+  procedure PrintT_CARGO(pCargo in T_CARGO);
 
 end REST_API_HELPER;
 /
@@ -27,7 +27,7 @@ create or replace package body REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_DOC ג JSON
   */
-  procedure PrintT_DOC(pDoc in sbc.T_DOC) is
+  procedure PrintT_DOC(pDoc in T_DOC) is
   begin
     apex_json.write('id', pDoc.id, true);
     apex_json.write('name', pDoc.name, true);
@@ -46,7 +46,7 @@ create or replace package body REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_UNIT ג JSON
   */
-  procedure PrintT_UNIT(pUnit in sbc.T_UNIT) is
+  procedure PrintT_UNIT(pUnit in T_UNIT) is
   begin
     apex_json.write('type_unit', pUnit.type_unit, true);
     apex_json.write('transport', pUnit.transport, true);
@@ -72,7 +72,7 @@ create or replace package body REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_POINT ג JSON
   */
-  procedure PrintT_POINT(pPoint in sbc.T_POINT) is
+  procedure PrintT_POINT(pPoint in T_POINT) is
   begin
     apex_json.write('id', pPoint.id, true);
     apex_json.write('address', pPoint.address, true);
@@ -85,7 +85,7 @@ create or replace package body REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_CARGO ג JSON
   */
-  procedure PrintT_CARGO(pCargo in sbc.T_CARGO) is
+  procedure PrintT_CARGO(pCargo in T_CARGO) is
   begin
   
     apex_json.write('name', pCargo.name, true);

@@ -515,7 +515,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lCollectionName   varchar2(255) := 'ORDERS';
     lCollectionExists boolean;
   
-    lRc sys_refcursor;
+    --lRc sys_refcursor;
   
     lOffset number;
     lLimit  number;
@@ -624,15 +624,15 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
       
         for l_c in (select *
-                      from TABLE(sbc.mcsf_api.get_orders(pClntId          => lCompanyId,
-                                                         pDate_from       => lPeriodFrom,
-                                                         pDate_to         => lPeriodTo,
-                                                         pStatus_id       => lStatusId,
-                                                         pSortId          => lSortId,
-                                                         pSortCreated_at  => lSortCreatedAt,
-                                                         pSortDate_from   => lSortDateFrom,
-                                                         pSortDate_to     => lSortDateTo,
-                                                         pSortReceivables => lSortReceivables))) loop
+                      from TABLE(mcsf_api.get_orders(pClntId          => lCompanyId,
+                                                     pDate_from       => lPeriodFrom,
+                                                     pDate_to         => lPeriodTo,
+                                                     pStatus_id       => lStatusId,
+                                                     pSortId          => lSortId,
+                                                     pSortCreated_at  => lSortCreatedAt,
+                                                     pSortDate_from   => lSortDateFrom,
+                                                     pSortDate_to     => lSortDateTo,
+                                                     pSortReceivables => lSortReceivables))) loop
           APEX_COLLECTION.ADD_MEMBER(p_collection_name => lCollectionName,
                                      p_c001            => l_c.id,
                                      p_c002            => l_c.place_from,
@@ -795,8 +795,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.open_object('data');
     
       for l_c in (select *
-                    from TABLE(sbc.mcsf_api.fn_orders_get(pID     => lOrderId,
-                                                          pClntId => lCompanyId))) loop
+                    from TABLE(mcsf_api.fn_orders_get(pID     => lOrderId,
+                                                      pClntId => lCompanyId))) loop
       
         apex_json.write('id', l_c.id, true);
         apex_json.write('consignor', l_c.consignor, true);
@@ -936,7 +936,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(sbc.mcsf_api.fn_country_list) t) c
+                            from TABLE(mcsf_api.fn_country_list) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -959,7 +959,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(sbc.mcsf_api.fn_country_list) t;
+      from TABLE(mcsf_api.fn_country_list) t;
   
     apex_json.write('total', lColectionCount);
   
@@ -1000,7 +1000,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(sbc.mcsf_api.fn_region_list) t) c
+                            from TABLE(mcsf_api.fn_region_list) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -1023,7 +1023,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(sbc.mcsf_api.fn_region_list) t;
+      from TABLE(mcsf_api.fn_region_list) t;
   
     apex_json.write('total', lColectionCount);
   
@@ -1064,7 +1064,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(sbc.mcsf_api.fn_cities_list) t) c
+                            from TABLE(mcsf_api.fn_cities_list) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -1087,7 +1087,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(sbc.mcsf_api.fn_cities_list) t;
+      from TABLE(mcsf_api.fn_cities_list) t;
   
     apex_json.write('total', lColectionCount);
   

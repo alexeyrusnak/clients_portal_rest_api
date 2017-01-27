@@ -83,6 +83,21 @@ CREATE OR REPLACE PACKAGE REST_API AS
   */
   function PrintOrder return rest_api_err;
 
+  /*
+  Вывод списка стран
+  */
+  function PrintCountryList return rest_api_err;
+
+  /*
+  Вывод списка регионов
+  */
+  function PrintRegionList return rest_api_err;
+
+  /*
+  Вывод списка городов
+  */
+  function PrintCityList return rest_api_err;
+
 END REST_API;
 /
 CREATE OR REPLACE PACKAGE BODY REST_API AS
@@ -216,6 +231,39 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         WHEN 'orders_get' THEN
           if IsSessionValid() then
             lError := PrintOrder();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
+        WHEN 'country_list' THEN
+          if IsSessionValid() then
+            lError := PrintCountryList();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
+        WHEN 'region_list' THEN
+          if IsSessionValid() then
+            lError := PrintRegionList();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
+        WHEN 'city_list' THEN
+          if IsSessionValid() then
+            lError := PrintCityList();
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -854,6 +902,198 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     return lError;
   
+  end;
+
+  /*
+  Вывод списка стран
+  */
+  function PrintCountryList return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    lOffset number;
+    lLimit  number;
+  
+    lColectionCount number := 0;
+  
+  begin
+  
+    -- filters
+    begin
+      lOffset := apex_json.get_number(p_path    => 'offset',
+                                      p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit',
+                                      p_default => PkgDefaultLimit);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+  
+    if lIsSuccess then
+      apex_json.open_array('data');
+    
+      for l_c in (select *
+                    from (select ROWNUM seq_id, t.*
+                            from TABLE(sbc.mcsf_api.fn_country_list) t) c
+                   where c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+      
+        apex_json.open_object;
+      
+        apex_json.write('seq_id', l_c.seq_id, true);
+        apex_json.write('id', l_c.id, true);
+        apex_json.write('name', l_c.def, true);
+      
+        apex_json.close_object;
+      end loop;
+    end if;
+  
+    apex_json.close_array;
+  
+    -- Pager
+    apex_json.open_object('pager');
+  
+    apex_json.write('offset', lOffset);
+  
+    select count(t.id)
+      into lColectionCount
+      from TABLE(sbc.mcsf_api.fn_country_list) t;
+  
+    apex_json.write('total', lColectionCount);
+  
+    apex_json.close_object();
+  
+    return lError;
+  end;
+
+  /*
+  Вывод списка регионов
+  */
+  function PrintRegionList return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    lOffset number;
+    lLimit  number;
+  
+    lColectionCount number := 0;
+  
+  begin
+  
+    -- filters
+    begin
+      lOffset := apex_json.get_number(p_path    => 'offset',
+                                      p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit',
+                                      p_default => PkgDefaultLimit);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+  
+    if lIsSuccess then
+      apex_json.open_array('data');
+    
+      for l_c in (select *
+                    from (select ROWNUM seq_id, t.*
+                            from TABLE(sbc.mcsf_api.fn_region_list) t) c
+                   where c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+      
+        apex_json.open_object;
+      
+        apex_json.write('seq_id', l_c.seq_id, true);
+        apex_json.write('id', l_c.id, true);
+        apex_json.write('name', l_c.region_name, true);
+      
+        apex_json.close_object;
+      end loop;
+    end if;
+  
+    apex_json.close_array;
+  
+    -- Pager
+    apex_json.open_object('pager');
+  
+    apex_json.write('offset', lOffset);
+  
+    select count(t.id)
+      into lColectionCount
+      from TABLE(sbc.mcsf_api.fn_region_list) t;
+  
+    apex_json.write('total', lColectionCount);
+  
+    apex_json.close_object();
+  
+    return lError;
+  end;
+
+  /*
+  Вывод списка городов
+  */
+  function PrintCityList return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    lOffset number;
+    lLimit  number;
+  
+    lColectionCount number := 0;
+  
+  begin
+  
+    -- filters
+    begin
+      lOffset := apex_json.get_number(p_path    => 'offset',
+                                      p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit',
+                                      p_default => PkgDefaultLimit);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+  
+    if lIsSuccess then
+      apex_json.open_array('data');
+    
+      for l_c in (select *
+                    from (select ROWNUM seq_id, t.*
+                            from TABLE(sbc.mcsf_api.fn_cities_list) t) c
+                   where c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+      
+        apex_json.open_object;
+      
+        apex_json.write('seq_id', l_c.seq_id, true);
+        apex_json.write('id', l_c.id, true);
+        apex_json.write('name', l_c.def, true);
+      
+        apex_json.close_object;
+      end loop;
+    end if;
+  
+    apex_json.close_array;
+  
+    -- Pager
+    apex_json.open_object('pager');
+  
+    apex_json.write('offset', lOffset);
+  
+    select count(t.id)
+      into lColectionCount
+      from TABLE(sbc.mcsf_api.fn_cities_list) t;
+  
+    apex_json.write('total', lColectionCount);
+  
+    apex_json.close_object();
+  
+    return lError;
   end;
 
   function getOrdersTest return tbl_OrdersTest
