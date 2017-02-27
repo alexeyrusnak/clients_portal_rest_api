@@ -99,24 +99,39 @@ CREATE OR REPLACE PACKAGE REST_API AS
   /*
   Функция для обновления документов
   */
+  function CreateDoc return rest_api_err;
+
+  /*
+  Функция для обновления документов
+  */
   function UpdateDoc return rest_api_err;
+
+  /*
+  Функция удаления документов
+  */
+  function RemoveDoc return rest_api_err;
 
   /*
   Функция для сохранения файлов
   */
-  function SaveFile(pFile in blob, pMime in varchar2, pFileId out number)
-    return rest_api_err;
+  function SaveFile(pDocId  in number,
+                    pClntId in number,
+                    pFile   in blob,
+                    pMime   in varchar2,
+                    pFileId out number) return rest_api_err;
 
   /*
   Функция возвращает файл
   */
-  function DownloadFile(pFileId in number) return rest_api_err;
+  function DownloadFile(pClntId in number, pFileId in number)
+    return rest_api_err;
 
   /*
   Файловый API
   */
   procedure ApiFile(pSession  in varchar2,
                     pToken    in varchar2,
+                    pDocId    in number default null,
                     pFileId   in number default null,
                     pFileBody in blob default null,
                     pMime     in varchar2 default null);
@@ -317,9 +332,31 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lError     := Errors(2);
           end if;
         
+        WHEN 'orders_doc_create' THEN
+          if IsSessionValid() then
+            lError := CreateDoc();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
         WHEN 'orders_doc_update' THEN
           if IsSessionValid() then
             lError := UpdateDoc();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+        
+        WHEN 'orders_doc_delete' THEN
+          if IsSessionValid() then
+            lError := RemoveDoc();
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -1289,6 +1326,97 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   /*
   Функция для обновления документов
   */
+  function CreateDoc return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    --lCurrentUserId   number;
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+  
+    lDocId        number := null;
+    lOrderId      number := null;
+    lTypeId       number := null;
+    lDate         date := null;
+    lAuthor       varchar2(255) := null;
+    lDocNumber    varchar2(255) := null;
+    lDocName      varchar2(255) := null;
+    lShortContent varchar2(255) := null;
+  
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
+                                                          1));
+  
+    -- data
+    begin
+    
+      lOrderId := apex_json.get_number(p_path    => 'data.order_id',
+                                       p_default => null);
+      lTypeId  := apex_json.get_number(p_path    => 'data.type',
+                                       p_default => null);
+    
+      lDate := apex_json.get_date(p_path    => 'data.date',
+                                  p_format  => PkgDefaultDateFormat,
+                                  p_default => null);
+    
+      lAuthor := apex_json.get_varchar2(p_path    => 'data.author',
+                                        p_default => null);
+    
+      lDocNumber := apex_json.get_varchar2(p_path    => 'data.number',
+                                           p_default => null);
+    
+      lShortContent := apex_json.get_varchar2(p_path    => 'data.theme',
+                                              p_default => null);
+    
+      lShortContent := apex_json.get_varchar2(p_path    => 'data.short_content',
+                                              p_default => null);
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(9);
+    end;
+  
+    if lIsSuccess then
+      begin
+        lDocId := mcsf_api.
+                  CreateDocument(pOrdId        => lOrderId,
+                                 pClntId       => lCompanyId,
+                                 pDctpId       => lTypeId,
+                                 pDocnumber    => lDocNumber,
+                                 pDocDate      => lDate,
+                                 pTheme        => lDocName,
+                                 pShortContent => lShortContent,
+                                 pAuthor       => lAuthor);
+      
+        if lDocId is not null and lDocId > 0 then
+          lIsSuccess := true;
+          apex_json.open_object('data');
+          apex_json.write('id', lDocId, true);
+          apex_json.close_object;
+        else
+          lIsSuccess := false;
+        end if;
+      
+        if lIsSuccess = false then
+          lError := rest_api_err('failed_create_document',
+                                 'Failed create document',
+                                 0);
+        end if;
+      
+      exception
+        when others then
+          lIsSuccess := false;
+          lError     := Errors(3);
+      end;
+    end if;
+  
+    return lError;
+  end;
+
+  /*
+  Функция для обновления документов
+  */
   function UpdateDoc return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
@@ -1369,10 +1497,61 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   end;
 
   /*
+  Функция удаления документов
+  */
+  function RemoveDoc return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    --lCurrentUserId   number;
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+  
+    lDocId number := null;
+  
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
+                                                          1));
+  
+    -- data
+    begin
+      lDocId := apex_json.get_number(p_path => 'data.id', p_default => null);
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(9);
+    end;
+  
+    if lIsSuccess then
+      begin
+        lIsSuccess := mcsf_api.RemoveDocument(pClntId => lCompanyId,
+                                              pDocId  => lDocId);
+      
+        if lIsSuccess = false then
+          lError := rest_api_err('failed_remove_document',
+                                 'Failed remove document',
+                                 0);
+        end if;
+      
+      exception
+        when others then
+          lIsSuccess := false;
+          lError     := Errors(3);
+      end;
+    end if;
+  
+    return lError;
+  end;
+
+  /*
   Функция для сохранения файлов
   */
-  function SaveFile(pFile in blob, pMime in varchar2, pFileId out number)
-    return rest_api_err is
+  function SaveFile(pDocId  in number,
+                    pClntId in number,
+                    pFile   in blob,
+                    pMime   in varchar2,
+                    pFileId out number) return rest_api_err is
   
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
@@ -1389,18 +1568,30 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     if lIsSuccess then
       begin
       
-        select count(t.id) + 1 into lFileId from test t;
+        /*select count(t.id) + 1 into lFileId from test t;
         insert into test t
           (t.id, t.f, t.mime)
         values
           (lFileId, pFile, pMime);
+        
+        pFileId := lFileId;*/
       
-        pFileId := lFileId;
+        lFileId := mcsf_api.AddFileToDocument(pClntId   => pClntId,
+                                              pDocId    => pDocId,
+                                              pFileBody => pFile,
+                                              pFileName => pMime);
       
+        if lFileId > 0 then
+          lIsSuccess := true;
+          pFileId    := lFileId;
+        else
+          lError     := Errors(7);
+          lIsSuccess := false;
+        end if;
       exception
         when others then
-          --lIsSuccess := false;
-          lError := Errors(7);
+          lIsSuccess := false;
+          lError     := Errors(7);
       end;
     
     end if;
@@ -1412,7 +1603,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   /*
   Функция возвращает файл
   */
-  function DownloadFile(pFileId in number) return rest_api_err is
+  function DownloadFile(pClntId in number, pFileId in number)
+    return rest_api_err is
   
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
@@ -1431,20 +1623,30 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     if lIsSuccess then
       begin
       
-        select t.f, t.mime
-          into lFile, lFileName
-          from test t
-         where t.id = pFileId;
+        /*select t.f, t.mime
+         into lFile, lFileName
+         from test t
+        where t.id = pFileId;*/
       
-        sys.htp.init;
-        sys.owa_util.mime_header('application/octet-stream',
-                                 false,
-                                 'UTF-8');
-        sys.htp.p('Content-length: ' || sys.dbms_lob.getlength(lFile));
-        sys.htp.p('Content-Disposition: inline; filename="' || lFileName || '"');
-        sys.owa_util.http_header_close;
+        mcsf_api.GetFile(pClntId   => pClntId,
+                         pFileId   => pFileId,
+                         pFileBody => lFile);
       
-        sys.wpg_docload.download_file(lFile);
+        if lFile is not null then
+        
+          sys.htp.init;
+          sys.owa_util.mime_header('application/octet-stream',
+                                   false,
+                                   'UTF-8');
+          sys.htp.p('Content-length: ' || sys.dbms_lob.getlength(lFile));
+          sys.htp.p('Content-Disposition: inline; filename="' || pFileId || '"');
+          sys.owa_util.http_header_close;
+        
+          sys.wpg_docload.download_file(lFile);
+        
+        else
+          lError := Errors(8);
+        end if;
       
       exception
         when others then
@@ -1463,10 +1665,14 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   */
   procedure ApiFile(pSession  in varchar2,
                     pToken    in varchar2,
+                    pDocId    in number default null,
                     pFileId   in number default null,
                     pFileBody in blob default null,
                     pMime     in varchar2 default null) is
     lWorkspaceId number;
+  
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
   
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
@@ -1490,13 +1696,26 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lError.message := sqlerrm;
     end;
   
+    begin
+      lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+      lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
+                                                            1));
+    
+    exception
+      when others then
+        lIsSuccess     := false;
+        lError         := Errors(9);
+        lError.message := sqlerrm;
+    end;
+  
     if lIsSuccess then
       CASE lMethod
       
         WHEN 'get' THEN
         
           if IsSessionValid(pSession, pToken) then
-            lError := DownloadFile(pFileId);
+            lError := DownloadFile(pClntId => lCompanyId,
+                                   pFileId => pFileId);
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -1526,10 +1745,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           apex_json.open_object;
         
           if IsSessionValid(pSession, pToken) then
-            lError := SaveFile(pFile   => pFileBody,
+            lError := SaveFile(pDocId  => pDocId,
+                               pClntId => lCompanyId,
+                               pFile   => pFileBody,
                                pMime   => pMime,
                                pFileId => lFileId);
-            if lError.success != 1 then
+            if lError.success = 1 then
+              lIsSuccess := true;
+              apex_json.open_object('data');
+              apex_json.write('id', lFileId, true);
+              apex_json.close_object;
+            else
               lIsSuccess := false;
             end if;
           else

@@ -135,7 +135,14 @@ CREATE OR REPLACE PACKAGE REST_API AS
                     pFileId   in number default null,
                     pFileBody in blob default null,
                     pMime     in varchar2 default null);
-
+ /*
+  Вывод информации по компании
+ */
+ function Companies return rest_api_err;
+/*
+ Журнал протоколирования ошибок и тестирования
+*/
+ procedure ins_syslog(mess in varchar2, logdate in date);
 END REST_API;
 /
 CREATE OR REPLACE PACKAGE BODY REST_API AS
@@ -364,7 +371,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+        -- Вывод информации по компании       
+        WHEN 'companies' THEN
+          if IsSessionValid() then
+            lError := Companies();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+          
         ELSE
           lIsSuccess := false;
           lError     := Errors(4);
@@ -1630,7 +1648,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
         mcsf_api.GetFile(pClntId   => pClntId,
                          pFileId   => pFileId,
-                         pFileBody => lFile);
+                         pFileBody => lFile,
+                         pFileName => lFileName);
       
         if lFile is not null then
         
@@ -1639,7 +1658,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                    false,
                                    'UTF-8');
           sys.htp.p('Content-length: ' || sys.dbms_lob.getlength(lFile));
-          sys.htp.p('Content-Disposition: inline; filename="' || pFileId || '"');
+          sys.htp.p('Content-Disposition: inline; filename="' || lFileName || '"');
           sys.owa_util.http_header_close;
         
           sys.wpg_docload.download_file(lFile);
@@ -1782,7 +1801,56 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       END CASE;
     end if;
   end;
-
+  
+  /*
+  Вывод информации по компании
+ */
+ function Companies return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+    --lCurrentUserId   number;
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+    lRc sys_refcursor;
+ begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,1));
+    if lIsSuccess then
+      -- Данные по компании
+      apex_json.open_object('data');
+      for l_c in (select *
+                    from TABLE(mcsf_api.fn_company_get(pClntId => lCompanyId))) loop
+      
+        apex_json.write('id', l_c.id, true);
+        apex_json.write('name', l_c.def, true);
+        apex_json.write('plan', l_c.tarif_plan, true); 
+        -- Contacts
+        open lRc for
+          select * from table(mcsf_api.fn_company_contacts(pClntId => lCompanyId));
+        apex_json.write('contacts', lRc);
+        apex_json.write('sum', l_c.debet_sum, true); 
+        apex_json.write('total_orders', l_c.total_orders, true);        
+        apex_json.write('active_orders', l_c.active_orders, true);
+        apex_json.write('debts_count', l_c.debts_count, true);
+        apex_json.write('currency_code', l_c.currency_code, true);
+        
+       end loop;
+      apex_json.close_object;
+    end if;
+    return lError;
+ end;
+ -- ================================================
+/*
+ Журнал протоколирования ошибок и тестирования
+*/
+ procedure ins_syslog(mess in varchar2, logdate in date) is
+   begin
+      insert into sys_logs
+      (msg,log_date)
+      values(mess,logdate);
+      commit;
+   end;
+-- ======================================================
 BEGIN
 
   Errors := ErrorsArrType();
