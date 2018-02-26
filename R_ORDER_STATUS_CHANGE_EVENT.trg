@@ -1,14 +1,15 @@
-CREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
+п»їCREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
 
   BEFORE INSERT OR UPDATE OF ORST_ORST_ID ON ORST_HISTORIES
   FOR EACH ROW
 
 DECLARE
-  lHoldId  number;
-  lEmail   varchar2(100);
-  lClntId  number;
-  lMessTpl varchar2(2000);
-  lMess    varchar2(2000);
+  lHoldId number;
+  lEmail  varchar2(100);
+  lClntId number;
+  lMess   varchar2(2000);
+
+  lMessSubject varchar2(2000) := 'РР·РјРµРЅРµРЅРёРµ СЃС‚Р°С‚СѓСЃР° Р·Р°РєР°Р·Р°';
 
   lOrdId number;
 
@@ -22,26 +23,26 @@ BEGIN
 
   begin
   
-    -- ИД нового статуса
+    -- РР” РЅРѕРІРѕРіРѕ СЃС‚Р°С‚СѓСЃР°
     lNewOrstId := :new.orst_orst_id;
   
-    -- ИД заказа
+    -- РР” Р·Р°РєР°Р·Р°
     lOrdId := :new.ord_ord_id;
   
-    -- ИД холдинга
+    -- РР” С…РѕР»РґРёРЅРіР°
     select min(h.hold_id)
       into lHoldId
       from holding_dic h
      where h.del_date is null;
   
-    -- Почтовый ящик и ИД клиента
+    -- РџРѕС‡С‚РѕРІС‹Р№ СЏС‰РёРє Рё РР” РєР»РёРµРЅС‚Р°
     select cl.email, o.clnt_clnt_id
       into lEmail, lClntId
       from client_contacts cl, orders o
      where o.ord_id = lOrdId
        and cl.clcn_id(+) = o.clcn_clcn_id;
   
-    -- ИД предыдущего статуса
+    -- РР” РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃС‚Р°С‚СѓСЃР°
     begin
       select tt.orst_orst_id
         into lOldOrstId
@@ -53,7 +54,7 @@ BEGIN
         lOldOrstId := null;
     end;
   
-    -- Предыдущий статус
+    -- РџСЂРµРґС‹РґСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ
     begin
       select t.def
         into lOldStatusDef
@@ -64,7 +65,7 @@ BEGIN
         lOldStatusDef := null;
     end;
   
-    -- Новый статус
+    -- РќРѕРІС‹Р№ СЃС‚Р°С‚СѓСЃ
     begin
       select t.def
         into lNewStatusDef
@@ -75,47 +76,47 @@ BEGIN
         lNewStatusDef := null;
     end;
   
-    lMess := 'Уважаемый клиент, ' || to_char(sysdate, 'dd.mm.yyyy hh24:mi') ||
-             ' статус Вашего заказа изменен';
+    lMess := 'РЈРІР°Р¶Р°РµРјС‹Р№ РєР»РёРµРЅС‚, ' || to_char(sysdate, 'dd.mm.yyyy hh24:mi') ||
+             ' СЃС‚Р°С‚СѓСЃ Р’Р°С€РµРіРѕ Р·Р°РєР°Р·Р° РёР·РјРµРЅРµРЅ';
   
     if lOldStatusDef is not null then
       lMess := lMess || ' c "' || lOldStatusDef || '"';
     end if;
   
     if lNewStatusDef is not null then
-      lMess := lMess || ' на "' || lNewStatusDef || '"';
+      lMess := lMess || ' РЅР° "' || lNewStatusDef || '"';
     end if;
   
     ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,
                  Message  => lMess,
                  IsCommit => false);
   
-    /*
-    INSERT INTO messages2customers
+    insert into messages2customers
       (mscm_id,
        message_date,
        send_to,
        clnt_clnt_id,
        message_text,
+       message_thema,
        ord_ord_id,
        delivery_type,
        hold_hold_id,
        send_date,
        store_days,
        event_id)
-    VALUES
+    values
       (mscm_seq.nextval,
        sysdate,
-       lClntId,
+       lEmail,
        lClntId,
        lMess,
-       :new.ord_ord_id,
+       lMessSubject,
+       lOrdId,
        0,
        lHoldId,
        null,
        3,
-       21);
-       */
+       lNewOrstId);
   
   exception
     when others then
@@ -136,11 +137,11 @@ BEGIN
     mess           varchar2(2000);
     Str            varchar2(100);
   begin
-    -- Строка выключения триггера при репликации
+    -- РЎС‚СЂРѕРєР° РІС‹РєР»СЋС‡РµРЅРёСЏ С‚СЂРёРіРіРµСЂР° РїСЂРё СЂРµРїР»РёРєР°С†РёРё
     if dbms_reputil.from_remote = true then
       return;
     end if;
-    ----********* Вставка для сообщения
+    ----********* Р’СЃС‚Р°РІРєР° РґР»СЏ СЃРѕРѕР±С‰РµРЅРёСЏ
   
     if :new.pot_date is not null then
   
@@ -158,9 +159,9 @@ BEGIN
         BEGIN
   
           begin
-            --- Поиск почтового ящика
+            --- РџРѕРёСЃРє РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
             SELECT CL.EMAIL, O.CLNT_CLNT_ID
-              INTO V_EMAIL, V_CLNT_CLNT_ID -- Почта , клиент
+              INTO V_EMAIL, V_CLNT_CLNT_ID -- РџРѕС‡С‚Р° , РєР»РёРµРЅС‚
               FROM CLIENT_CONTACTS CL, ORDERS O
              WHERE O.ORD_ID = cur.ord_id
                AND CL.CLCN_ID(+) = O.CLCN_CLCN_ID;
@@ -171,10 +172,10 @@ BEGIN
                where d.city_id = :new.city_pot_id;
             exception
               when others then
-                Str := 'не указан';
+                Str := 'РЅРµ СѓРєР°Р·Р°РЅ';
             END;
-            Mess := 'Контейнер ' || cur.cont_index || ' ' || cur.cont_number ||
-                    ' прибыл в порт перегрузки ' || str || '  ' ||
+            Mess := 'РљРѕРЅС‚РµР№РЅРµСЂ ' || cur.cont_index || ' ' || cur.cont_number ||
+                    ' РїСЂРёР±С‹Р» РІ РїРѕСЂС‚ РїРµСЂРµРіСЂСѓР·РєРё ' || str || '  ' ||
                     to_char(:new.pot_date, 'dd.mm.yyyy');
   
             insert into messages2customers
