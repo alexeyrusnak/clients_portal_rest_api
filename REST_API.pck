@@ -135,14 +135,14 @@ CREATE OR REPLACE PACKAGE REST_API AS
                     pFileId   in number default null,
                     pFileBody in blob default null,
                     pMime     in varchar2 default null);
- /*
-  Вывод информации по компании
- */
- function Companies return rest_api_err;
-/*
- Журнал протоколирования ошибок и тестирования
-*/
- procedure ins_syslog(mess in varchar2, logdate in date);
+  /*
+   Вывод информации по компании
+  */
+  function Companies return rest_api_err;
+  /*
+   Журнал протоколирования ошибок и тестирования
+  */
+  procedure ins_syslog(mess in varchar2, logdate in date);
 END REST_API;
 /
 CREATE OR REPLACE PACKAGE BODY REST_API AS
@@ -371,7 +371,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        -- Вывод информации по компании       
+          -- Вывод информации по компании       
         WHEN 'companies' THEN
           if IsSessionValid() then
             lError := Companies();
@@ -382,7 +382,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-          
+        
         ELSE
           lIsSuccess := false;
           lError     := Errors(4);
@@ -1314,25 +1314,31 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end;
   
     if lIsSuccess then
-    
       -- Данные по документу
       apex_json.open_object('data');
     
-      open lRc for
-        select *
-          from TABLE(mcsf_api.fn_orders_doc(pID     => lDocId,
-                                            pClntId => lCompanyId));
-    
-      fetch lRc bulk collect
-        into lDocs;
-    
-      close lRc;
-    
-      for elem in lDocs.first .. lDocs.last loop
-        --apex_json.open_object;
-        rest_api_helper.PrintT_DOCS(lDocs(elem));
-        --apex_json.close_object;
-      end loop;
+      begin
+        open lRc for
+          select *
+            from TABLE(mcsf_api.fn_orders_doc(pID     => lDocId,
+                                              pClntId => lCompanyId));
+      
+        fetch lRc bulk collect
+          into lDocs;
+      
+        close lRc;
+      
+        for elem in lDocs.first .. lDocs.last loop
+          --apex_json.open_object;
+          rest_api_helper.PrintT_DOCS(lDocs(elem));
+          --apex_json.close_object;
+        end loop;
+      
+      exception
+        when others then
+          lIsSuccess := false;
+          lError     := Errors(8);
+      end;
     
       apex_json.close_object;
     
@@ -1801,20 +1807,21 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       END CASE;
     end if;
   end;
-  
+
   /*
-  Вывод информации по компании
- */
- function Companies return rest_api_err is
+   Вывод информации по компании
+  */
+  function Companies return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
     --lCurrentUserId   number;
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-    lRc sys_refcursor;
- begin
+    lRc              sys_refcursor;
+  begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
-    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,1));
+    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
+                                                          1));
     if lIsSuccess then
       -- Данные по компании
       apex_json.open_object('data');
@@ -1823,34 +1830,33 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
         apex_json.write('id', l_c.id, true);
         apex_json.write('name', l_c.def, true);
-        apex_json.write('plan', l_c.tarif_plan, true); 
+        apex_json.write('plan', l_c.tarif_plan, true);
         -- Contacts
         open lRc for
-          select * from table(mcsf_api.fn_company_contacts(pClntId => lCompanyId));
+          select *
+            from table(mcsf_api.fn_company_contacts(pClntId => lCompanyId));
         apex_json.write('contacts', lRc);
-        apex_json.write('sum', l_c.debet_sum, true); 
-        apex_json.write('total_orders', l_c.total_orders, true);        
+        apex_json.write('sum', l_c.debet_sum, true);
+        apex_json.write('total_orders', l_c.total_orders, true);
         apex_json.write('active_orders', l_c.active_orders, true);
         apex_json.write('debts_count', l_c.debts_count, true);
         apex_json.write('currency_code', l_c.currency_code, true);
-        
-       end loop;
+      
+      end loop;
       apex_json.close_object;
     end if;
     return lError;
- end;
- -- ================================================
-/*
- Журнал протоколирования ошибок и тестирования
-*/
- procedure ins_syslog(mess in varchar2, logdate in date) is
-   begin
-      insert into sys_logs
-      (msg,log_date)
-      values(mess,logdate);
-      commit;
-   end;
--- ======================================================
+  end;
+  -- ================================================
+  /*
+   Журнал протоколирования ошибок и тестирования
+  */
+  procedure ins_syslog(mess in varchar2, logdate in date) is
+  begin
+    insert into sys_logs (msg, log_date) values (mess, logdate);
+    commit;
+  end;
+  -- ======================================================
 BEGIN
 
   Errors := ErrorsArrType();
