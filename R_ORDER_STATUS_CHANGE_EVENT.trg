@@ -1,5 +1,16 @@
 CREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
 
+/******************************************************************************
+   NAME:       R_ORDER_STATUS_CHANGE_EVENT
+   PURPOSE: Триггер для отпавки сообщений клиентам об изменении статуса заказа
+
+   REVISIONS:
+   Ver        Date        Author           Description
+   ---------  ----------  ---------------  ------------------------------------
+   1.0        27.01.2018  R-abik           1. Создан триггер.
+
+******************************************************************************/
+
   BEFORE INSERT OR UPDATE OF ORST_ORST_ID ON ORST_HISTORIES
   FOR EACH ROW
 
@@ -7,9 +18,14 @@ DECLARE
   lHoldId number;
   lEmail  varchar2(100);
   lClntId number;
+  lOrdNumber varchar2(150);
+  lOrdFreightDef varchar2(200);
+  
+  lMessTplDef varchar2(200) := 'Изменение статуса заказа';
+  lMessTplDef02 varchar2(200) := 'Заявка принята в работу';
+  
   lMess   varchar2(2000);
-
-  lMessSubject varchar2(2000) := 'Изменение статуса заказа';
+  lMessSubject varchar2(2000);
 
   lOrdId number;
 
@@ -20,11 +36,16 @@ DECLARE
   lNewStatusDef varchar2(200);
 
 BEGIN
-
-  begin
   
+  begin
+    
     -- ИД нового статуса
     lNewOrstId := :new.orst_orst_id;
+    
+    -- Если новый статус заявки - 01, то ничего не отправляем
+   if lNewOrstId = 1 then
+      return;
+   end if;
   
     -- ИД заказа
     lOrdId := :new.ord_ord_id;
@@ -41,6 +62,33 @@ BEGIN
       from client_contacts cl, orders o
      where o.ord_id = lOrdId
        and cl.clcn_id(+) = o.clcn_clcn_id;
+       
+    -- Номер заявки клиента
+   select o.internal_number, fr.def
+     into lOrdNumber, lOrdFreightDef
+     from orders o, vOrd_Frgt vofr, freights fr
+    where o.ord_id = lOrdId
+      and o.ord_id = vofr.ord_ord_id(+)
+      and vofr.frgt_frgt_id = fr.frgt_id(+);
+      
+   -- Если новый статус заявки - 02, то отдельный шаблон
+   if lNewOrstId = 2 then
+      lMessTplDef := lMessTplDef02;
+   end if;
+   
+    -- Шаблон сообщения
+    begin
+      select t.subject, t.message_text
+        into lMessSubject, lMess
+        from event_templates t
+       where t.def = lMessTplDef;
+    exception
+      when others then
+        ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,
+                     Message  => 'R_ORDER_STATUS_CHANGE_EVENT - Не найден шаблон сообщения',
+                     IsCommit => FALSE);
+        return;
+    end;
   
     -- ИД предыдущего статуса
     begin
@@ -75,22 +123,17 @@ BEGIN
       when others then
         lNewStatusDef := null;
     end;
-  
-    lMess := 'Уважаемый клиент, ' || to_char(sysdate, 'dd.mm.yyyy hh24:mi') ||
-             ' статус Вашего заказа изменен';
-  
-    if lOldStatusDef is not null then
-      lMess := lMess || ' c "' || lOldStatusDef || '"';
-    end if;
-  
-    if lNewStatusDef is not null then
-      lMess := lMess || ' на "' || lNewStatusDef || '"';
-    end if;
-  
-    ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,
-                 Message  => lMess,
-                 IsCommit => false);
-  
+    
+    -- Подготовка сообщения и темы
+    lMessSubject := replace(lMessSubject, '<номер заявки>', lOrdNumber);
+    
+    lMess := replace(lMess, '<дата>', to_char(sysdate, 'dd.mm.yyyy hh24:mi'));
+    lMess := replace(lMess, '<номер заявки>', lOrdNumber);
+    lMess := replace(lMess, '<старый статус>', lOldStatusDef);
+    lMess := replace(lMess, '<новый статус>', lNewStatusDef);
+    lMess := replace(lMess, '<груз>', lOrdFreightDef);
+    
+    -- Запись сообщения в таблицу для рассылки
     insert into messages2customers
       (mscm_id,
        message_date,
