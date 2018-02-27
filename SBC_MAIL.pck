@@ -1,20 +1,20 @@
-ï»¿create or replace package SBC_MAIL is
+create or replace package SBC_MAIL is
 
 
 -- Public type declarations
--- ÐŸÐ°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ‹ Ð´Ð»Ñ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ Ð¿Ð¾Ñ‡Ñ‚Ñ‹
- MES_EMAIL_FROM varchar2(255);   -- Ð˜Ð¼Ñ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ Ð¸Ð¼ÐµÐ½Ð¸ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
- MES_EMAIL_SERVER varchar2(255); -- Ð˜Ð¼Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð° Ð´Ð»Ñ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¹
- MES_EMAIL_PASSW varchar2(255);  -- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
- MES_EMAIL_PORT varchar2(50);    -- ÐŸÐ¾Ñ€Ñ‚ Ð´Ð»Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð°
- MES_EMAIL_NAME varchar2(50);    -- Ð˜Ð¼Ñ Ð²Ð»Ð°Ð´ÐµÐ»ÑŒÑ†Ð° (Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ) Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÑ‰Ð¸ÐºÐ°
- MES_EMAIL_AUTH boolean ;        -- Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÑŒ Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸ÑŽ Ð½Ð° ÑÐµÑ€Ð²ÐµÑ€Ðµ
- MES_WALLET_PATH varchar2(2000); -- ÐŸÑƒÑ‚ÑŒ Ðº ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÑƒ
- MES_WALLET_PASS varchar2(2000); -- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ Ðº ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÑƒ
+-- Ïàðàìåòðû äëÿ îòïðàâêè ïî÷òû
+ MES_EMAIL_FROM varchar2(255);   -- Èìÿ ïîëüçîâàòåëÿ, îò èìåíè êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
+ MES_EMAIL_SERVER varchar2(255); -- Èìÿ ïî÷òîâîãî ñåðâåðà äëÿ îòïðàâêè ñîîáùåíèé
+ MES_EMAIL_PASSW varchar2(255);  -- Ïàðîëü ïîëüçîâàòåëÿ, îò êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
+ MES_EMAIL_PORT varchar2(50);    -- Ïîðò äëÿ ïî÷òîâîãî ñåðâåðà
+ MES_EMAIL_NAME varchar2(50);    -- Èìÿ âëàäåëüöà (ïîëüçîâàòåëÿ) ïî÷òîâîãî ÿùèêà
+ MES_EMAIL_AUTH boolean ;        -- Èñïîëüçîâàòü àâòîðèçàöèþ íà ñåðâåðå
+ MES_WALLET_PATH varchar2(2000); -- Ïóòü ê êîøåëüêó
+ MES_WALLET_PASS varchar2(2000); -- Ïàðîëü ê êîøåëüêó
 
  DISPOSITION_ATTACHMENT CONSTANT VARCHAR2(10) := 'attachment';
  DISPOSITION_INLINE     CONSTANT VARCHAR2(10) := 'inline';
- -- Ð’Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ
+ -- Âëîæåíèÿ
  type t_Attachment is record (
    dirname     varchar2(2000),
    filename    varchar2(2000),
@@ -29,10 +29,10 @@
   type tbl_Attachments is table of t_Attachment;
   attachments tbl_Attachments;
 
- -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»ÐµÐ¹ Ð¿Ð¸ÑÑŒÐ¼Ð°
+ -- Ñïèñîê ïîëó÷àòåëåé ïèñüìà
  type t_Receiver is record(
-   rcvr_name varchar2(500), -- Ð˜Ð¼Ñ Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»Ñ
-   rcvr_mail varchar2(500)  -- ÐœÑ‹Ð»Ð¾ Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»Ñ
+   rcvr_name varchar2(500), -- Èìÿ ïîëó÷àòåëÿ
+   rcvr_mail varchar2(500)  -- Ìûëî ïîëó÷àòåëÿ
  );
  type tbl_Receivers is table of t_Receiver;
 
@@ -52,33 +52,33 @@ procedure Add_Attachment(blobloc  IN blob,
                          disposition IN varchar2 DEFAULT DISPOSITION_ATTACHMENT
                          );
 --*************************************************************************************************
--- ÐŸÐµÑ€ÐµÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²ÐºÐ°
+-- Ïåðåêîäèðîâêà
 --*************************************************************************************************
 function Encode_str(str in varchar2,
                     tp  in varchar2 default 'Q') return varchar2;
 
 --*************************************************************************************************
--- Ð“ÐµÐ½ÐµÑ€Ð°Ñ†Ð¸Ñ ÑÐ¿Ð¸ÑÐºÐ° Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»ÐµÐ¹
+-- Ãåíåðàöèÿ ñïèñêà ïîëó÷àòåëåé
 --*************************************************************************************************
 function Create_rcvr_list(mailto in varchar2)
                           return tbl_Receivers;
 --******************************************************************************************************************************
--- ÐžÑ‚Ð¿Ñ€Ð°Ð²ÐºÐ° Ð¿Ð¾Ñ‡Ñ‚Ñ‹
+-- Îòïðàâêà ïî÷òû
 --******************************************************************************************************************************
-function Send_Mail(p_rcvr_email       in varchar2 ,                    -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ñ‹Ñ… ÑÑ‰Ð¸ÐºÐ¾Ð² Ð°Ð´Ñ€ÐµÑÐ°Ñ‚Ð¾Ð²
-                   p_rcvr_email_copy  in varchar2 default null,        -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð°Ð´Ñ€ÐµÑÐ°Ñ‚Ð¾Ñ€ Ð² ÐºÐ¾Ð¿Ð¸Ð¸ Ð¿Ð¸ÑÑŒÐ¼Ð°
-                   p_subject          in varchar2 default null,        -- Ð¢ÐµÐ¼Ð° Ð¿Ð¸ÑÑŒÐ¼Ð°
-                   p_text             in varchar2 default null,        -- Ð¢ÐµÐºÑÑ‚ Ð¿Ð¸ÑÑŒÐ¼Ð°
-                   p_appl_id          in applications.appl_id%type,    -- Ð”Ð»Ñ ÐºÐ°ÐºÐ¾Ð³Ð¾ Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ Ð¿Ð¸ÑÐ°Ñ‚ÑŒ Ð² sys_logs
-                   p_sys_log_marker   in varchar2 default null,        -- ÐœÐµÑ‚ÐºÐ°, ÐºÐ¾Ñ‚Ð¾Ñ€Ð°Ñ Ð±ÑƒÐ´ÐµÑ‚ Ð²ÑÑ‚Ð°Ð²Ð»ÑÑ‚ÑŒÑÑ Ð² sys_logs Ð² Ð½Ð°Ñ‡Ð°Ð»Ðµ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ñ
-                   P_MES_EMAIL_FROM   in varchar2 default null,        -- Ð˜Ð¼Ñ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ Ð¸Ð¼ÐµÐ½Ð¸ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
-			             P_MES_EMAIL_NAME   in varchar2 default null,        -- Ð˜Ð¼Ñ Ð²Ð»Ð°Ð´ÐµÐ»ÑŒÑ†Ð° (Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ) Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÑ‰Ð¸ÐºÐ°
-                   P_MES_EMAIL_SERVER in varchar2 default null,        -- Ð˜Ð¼Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð° Ð´Ð»Ñ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¹
-                   P_MES_EMAIL_PASSW  in varchar2 default null,        -- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
-            			 P_MES_EMAIL_PORT   in varchar2 default null,        -- ÐŸÐ¾Ñ€Ñ‚ Ð´Ð»Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð°
-  					       P_MES_EMAIL_AUTH   in boolean default null,         -- Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÑŒ Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸ÑŽ Ð½Ð° ÑÐµÑ€Ð²ÐµÑ€Ðµ
-                   P_MES_WALLET_PATH  in varchar2 default null,        -- ÐŸÑƒÑ‚ÑŒ Ðº ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÑƒ
-                   P_MES_WALLET_PASS  in varchar2 default null         -- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐ°
+function Send_Mail(p_rcvr_email       in varchar2 ,                    -- Ñïèñîê ïî÷òîâûõ ÿùèêîâ àäðåñàòîâ
+                   p_rcvr_email_copy  in varchar2 default null,        -- Ñïèñîê àäðåñàòîð â êîïèè ïèñüìà
+                   p_subject          in varchar2 default null,        -- Òåìà ïèñüìà
+                   p_text             in varchar2 default null,        -- Òåêñò ïèñüìà
+                   p_appl_id          in applications.appl_id%type,    -- Äëÿ êàêîãî ïðèëîæåíèÿ ïèñàòü â sys_logs
+                   p_sys_log_marker   in varchar2 default null,        -- Ìåòêà, êîòîðàÿ áóäåò âñòàâëÿòüñÿ â sys_logs â íà÷àëå ñîîáùåíèÿ
+                   P_MES_EMAIL_FROM   in varchar2 default null,        -- Èìÿ ïîëüçîâàòåëÿ, îò èìåíè êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
+			             P_MES_EMAIL_NAME   in varchar2 default null,        -- Èìÿ âëàäåëüöà (ïîëüçîâàòåëÿ) ïî÷òîâîãî ÿùèêà
+                   P_MES_EMAIL_SERVER in varchar2 default null,        -- Èìÿ ïî÷òîâîãî ñåðâåðà äëÿ îòïðàâêè ñîîáùåíèé
+                   P_MES_EMAIL_PASSW  in varchar2 default null,        -- Ïàðîëü ïîëüçîâàòåëÿ, îò êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
+            			 P_MES_EMAIL_PORT   in varchar2 default null,        -- Ïîðò äëÿ ïî÷òîâîãî ñåðâåðà
+  					       P_MES_EMAIL_AUTH   in boolean default null,         -- Èñïîëüçîâàòü àâòîðèçàöèþ íà ñåðâåðå
+                   P_MES_WALLET_PATH  in varchar2 default null,        -- Ïóòü ê êîøåëüêó
+                   P_MES_WALLET_PASS  in varchar2 default null         -- Ïàðîëü êîøåëüêà
                    )
                    Return number;
 
@@ -87,7 +87,7 @@ end SBC_MAIL;
 create or replace package body SBC_MAIL is
 
 --******************************************************************************************************************************
--- ÐÐ°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ° Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ð¾Ð² Ð¿Ð¾Ñ‡Ñ‚Ñ‹
+-- Íàñòðîéêà ïàðàìåòðîâ ïî÷òû
 --******************************************************************************************************************************
 PROCEDURE SET_PARAM_EMAIL IS
     CURVAL VARCHAR2(255);
@@ -103,34 +103,34 @@ PROCEDURE SET_PARAM_EMAIL IS
       WHEN NO_DATA_FOUND THEN
 	  Value_Param :='-';
     end;
-	if Value_Param='-' then  raise_application_error(-20000, 'ÐÐµ Ð½Ð°Ð¹Ð´ÐµÐ½ Ð½Ð°ÑÑ‚Ñ€Ð¾ÐµÑ‡Ð½Ñ‹Ð¹ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€:"'||UPPER(Trim(Name_Param))||'"'||'SET_PARAM_EMAIL');
---	 ins_sys_logs(ApplId=>ApplId,Message=>'ÐÐµ Ð½Ð°Ð¹Ð´ÐµÐ½ Ð½Ð°ÑÑ‚Ñ€Ð¾ÐµÑ‡Ð½Ñ‹Ð¹ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€:"'||UPPER(Trim(Name_Param))||'"');
+	if Value_Param='-' then  raise_application_error(-20000, 'Íå íàéäåí íàñòðîå÷íûé ïàðàìåòð:"'||UPPER(Trim(Name_Param))||'"'||'SET_PARAM_EMAIL');
+--	 ins_sys_logs(ApplId=>ApplId,Message=>'Íå íàéäåí íàñòðîå÷íûé ïàðàìåòð:"'||UPPER(Trim(Name_Param))||'"');
 	end if;
     RETURN Value_Param;
   end;
 
 begin
--- Ð˜Ð¼Ñ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ Ð¸Ð¼ÐµÐ½Ð¸ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
+-- Èìÿ ïîëüçîâàòåëÿ, îò èìåíè êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
   MES_EMAIL_FROM:=SET_APP_PARAM('MES_EMAIL_FROM');
--- Ð˜Ð¼Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð° Ð´Ð»Ñ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¹
+-- Èìÿ ïî÷òîâîãî ñåðâåðà äëÿ îòïðàâêè ñîîáùåíèé
   MES_EMAIL_SERVER:=SET_APP_PARAM('MES_EMAIL_SERVER');
--- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
+-- Ïàðîëü ïîëüçîâàòåëÿ, îò êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
   MES_EMAIL_PASSW:=SET_APP_PARAM('MES_EMAIL_PASSW');
--- ÐŸÐ¾Ñ€Ñ‚ Ð´Ð»Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð°
+-- Ïîðò äëÿ ïî÷òîâîãî ñåðâåðà
   MES_EMAIL_PORT:=SET_APP_PARAM('MES_EMAIL_PORT');
--- Ð˜Ð¼Ñ Ð²Ð»Ð°Ð´ÐµÐ»ÑŒÑ†Ð° (Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ) Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÑ‰Ð¸ÐºÐ°
+-- Èìÿ âëàäåëüöà (ïîëüçîâàòåëÿ) ïî÷òîâîãî ÿùèêà
   MES_EMAIL_NAME:=SET_APP_PARAM('MES_EMAIL_NAME');
--- Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÑŒ Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸ÑŽ Ð½Ð° ÑÐµÑ€Ð²ÐµÑ€Ðµ
+-- Èñïîëüçîâàòü àâòîðèçàöèþ íà ñåðâåðå
   if SET_APP_PARAM('MES_EMAIL_AUTH')='1' then MES_EMAIL_AUTH := true; else MES_EMAIL_AUTH:=False;
   end if;
--- ÐŸÑƒÑ‚ÑŒ Ðº ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÑƒ
+-- Ïóòü ê êîøåëüêó
   MES_WALLET_PATH := SET_APP_PARAM('MES_WALLET_PATH');
--- ÐÐ´Ñ€ÐµÑ ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐ°
+-- Àäðåñ êîøåëüêà
   MES_WALLET_PASS := SET_APP_PARAM('MES_WALLET_PASS');
 end;
 
 --*************************************************************************************************
--- ÐŸÐµÑ€ÐµÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²ÐºÐ°
+-- Ïåðåêîäèðîâêà
 --*************************************************************************************************
 function Encode_str(str in varchar2,
                     tp in varchar2 default 'Q') return varchar2
@@ -176,7 +176,7 @@ is
  end;
 
 --*************************************************************************************************
--- Ð“ÐµÐ½ÐµÑ€Ð°Ñ†Ð¸Ñ ÑÐ¿Ð¸ÑÐºÐ° Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»ÐµÐ¹
+-- Ãåíåðàöèÿ ñïèñêà ïîëó÷àòåëåé
 --*************************************************************************************************
 function Create_rcvr_list(mailto in varchar2)
                           return tbl_Receivers
@@ -214,22 +214,22 @@ begin
 end;
 
 --******************************************************************************************************************************
--- ÐžÑ‚Ð¿Ñ€Ð°Ð²ÐºÐ° Ð¿Ð¾Ñ‡Ñ‚Ñ‹
+-- Îòïðàâêà ïî÷òû
 --******************************************************************************************************************************
-function Send_Mail(p_rcvr_email       in varchar2 ,                    -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ñ‹Ñ… ÑÑ‰Ð¸ÐºÐ¾Ð² Ð°Ð´Ñ€ÐµÑÐ°Ñ‚Ð¾Ð²
-                   p_rcvr_email_copy  in varchar2 default null,        -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð°Ð´Ñ€ÐµÑÐ°Ñ‚Ð¾Ñ€ Ð² ÐºÐ¾Ð¿Ð¸Ð¸ Ð¿Ð¸ÑÑŒÐ¼Ð°
-                   p_subject          in varchar2 default null,        -- Ð¢ÐµÐ¼Ð° Ð¿Ð¸ÑÑŒÐ¼Ð°
-                   p_text             in varchar2 default null,        -- Ð¢ÐµÐºÑÑ‚ Ð¿Ð¸ÑÑŒÐ¼Ð°
-                   p_appl_id          in applications.appl_id%type,    -- Ð”Ð»Ñ ÐºÐ°ÐºÐ¾Ð³Ð¾ Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ Ð¿Ð¸ÑÐ°Ñ‚ÑŒ Ð² sys_logs
-                   p_sys_log_marker   in varchar2 default null,        -- ÐœÐµÑ‚ÐºÐ°, ÐºÐ¾Ñ‚Ð¾Ñ€Ð°Ñ Ð±ÑƒÐ´ÐµÑ‚ Ð²ÑÑ‚Ð°Ð²Ð»ÑÑ‚ÑŒÑÑ Ð² sys_logs Ð² Ð½Ð°Ñ‡Ð°Ð»Ðµ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ñ
-                   P_MES_EMAIL_FROM   in varchar2 default null,        -- Ð˜Ð¼Ñ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ Ð¸Ð¼ÐµÐ½Ð¸ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
-			             P_MES_EMAIL_NAME   in varchar2 default null,        -- Ð˜Ð¼Ñ Ð²Ð»Ð°Ð´ÐµÐ»ÑŒÑ†Ð° (Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ) Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÑ‰Ð¸ÐºÐ°
-                   P_MES_EMAIL_SERVER in varchar2 default null,        -- Ð˜Ð¼Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð° Ð´Ð»Ñ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¹
-                   P_MES_EMAIL_PASSW  in varchar2 default null,        -- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ, Ð¾Ñ‚ ÐºÐ¾Ñ‚Ð¾Ñ€Ð¾Ð³Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ÑÑ Ð¿Ð¾Ñ‡Ñ‚Ð°
-            			 P_MES_EMAIL_PORT   in varchar2 default null,        -- ÐŸÐ¾Ñ€Ñ‚ Ð´Ð»Ñ Ð¿Ð¾Ñ‡Ñ‚Ð¾Ð²Ð¾Ð³Ð¾ ÑÐµÑ€Ð²ÐµÑ€Ð°
-  					       P_MES_EMAIL_AUTH   in boolean default null,         -- Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÑŒ Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸ÑŽ Ð½Ð° ÑÐµÑ€Ð²ÐµÑ€Ðµ
-                   P_MES_WALLET_PATH  in varchar2 default null,        -- ÐŸÑƒÑ‚ÑŒ Ðº ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÑƒ
-                   P_MES_WALLET_PASS  in varchar2 default null         -- ÐŸÐ°Ñ€Ð¾Ð»ÑŒ ÐºÐ¾ÑˆÐµÐ»ÑŒÐºÐ°
+function Send_Mail(p_rcvr_email       in varchar2 ,                    -- Ñïèñîê ïî÷òîâûõ ÿùèêîâ àäðåñàòîâ
+                   p_rcvr_email_copy  in varchar2 default null,        -- Ñïèñîê àäðåñàòîð â êîïèè ïèñüìà
+                   p_subject          in varchar2 default null,        -- Òåìà ïèñüìà
+                   p_text             in varchar2 default null,        -- Òåêñò ïèñüìà
+                   p_appl_id          in applications.appl_id%type,    -- Äëÿ êàêîãî ïðèëîæåíèÿ ïèñàòü â sys_logs
+                   p_sys_log_marker   in varchar2 default null,        -- Ìåòêà, êîòîðàÿ áóäåò âñòàâëÿòüñÿ â sys_logs â íà÷àëå ñîîáùåíèÿ
+                   P_MES_EMAIL_FROM   in varchar2 default null,        -- Èìÿ ïîëüçîâàòåëÿ, îò èìåíè êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
+			             P_MES_EMAIL_NAME   in varchar2 default null,        -- Èìÿ âëàäåëüöà (ïîëüçîâàòåëÿ) ïî÷òîâîãî ÿùèêà
+                   P_MES_EMAIL_SERVER in varchar2 default null,        -- Èìÿ ïî÷òîâîãî ñåðâåðà äëÿ îòïðàâêè ñîîáùåíèé
+                   P_MES_EMAIL_PASSW  in varchar2 default null,        -- Ïàðîëü ïîëüçîâàòåëÿ, îò êîòîðîãî îòïðàâëÿåòñÿ ïî÷òà
+            			 P_MES_EMAIL_PORT   in varchar2 default null,        -- Ïîðò äëÿ ïî÷òîâîãî ñåðâåðà
+  					       P_MES_EMAIL_AUTH   in boolean default null,         -- Èñïîëüçîâàòü àâòîðèçàöèþ íà ñåðâåðå
+                   P_MES_WALLET_PATH  in varchar2 default null,        -- Ïóòü ê êîøåëüêó
+                   P_MES_WALLET_PASS  in varchar2 default null         -- Ïàðîëü êîøåëüêà
                    ) Return number
 is
  conn               utl_smtp.connection;
@@ -255,8 +255,8 @@ is
  vBuf               VARCHAR2(32767);
  V_RES              number;
  vEhlo_Mes          varchar2(3000);
- vRcpt_list_to      tbl_Receivers  := tbl_Receivers(); -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð°Ð´Ñ€ÐµÑÐ¾Ð², ÐºÐ¾Ð¼Ñƒ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÑ‚ÑŒ
- vRcpt_list_copy    tbl_Receivers  := tbl_Receivers(); -- Ð¡Ð¿Ð¸ÑÐ¾Ðº Ð°Ð´Ñ€ÐµÑÐ¾Ð², ÐºÐ¾Ð¼Ñƒ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÑ‚ÑŒ ÐºÐ¾Ð¿Ð¸Ð¸
+ vRcpt_list_to      tbl_Receivers  := tbl_Receivers(); -- Ñïèñîê àäðåñîâ, êîìó îòïðàâëÿòü
+ vRcpt_list_copy    tbl_Receivers  := tbl_Receivers(); -- Ñïèñîê àäðåñîâ, êîìó îòïðàâëÿòü êîïèè
  vSys_log_marker    varchar2(4000);
 begin
  BEGIN
@@ -266,7 +266,7 @@ begin
   end if;
  --****************************************************************************************************************
     V_RES:=1;
--- Ð£ÑÑ‚Ð°Ð½Ð¾Ð²ÐºÐ° Ð¿ÐµÑ€ÐµÐ¼ÐµÐ½Ð½Ñ‹Ñ… Ð¸Ð· Ð±Ð°Ð·Ñ‹ ************************************************************************************
+-- Óñòàíîâêà ïåðåìåííûõ èç áàçû ************************************************************************************
     SET_PARAM_EMAIL;
     if (trim(P_MES_EMAIL_FROM) IS NOT NULL)   then MES_EMAIL_FROM   := P_MES_EMAIL_FROM; end if;
     if (trim(P_MES_EMAIL_SERVER) IS NOT NULL) then MES_EMAIL_SERVER := P_MES_EMAIL_SERVER; end if;
@@ -279,7 +279,7 @@ begin
 --*******************************************************************************************************************
  IF MES_WALLET_PATH is null
   THEN
-      -- ÐŸÐ¾Ñ€Ñ‚ 25
+      -- Ïîðò 25
       vReply := utl_smtp.open_connection(host => MES_EMAIL_SERVER,
                                          port => to_Number(MES_EMAIL_PORT),
                                          c    => conn);
@@ -295,14 +295,14 @@ begin
      if MES_EMAIL_AUTH then
         utl_smtp.ehlo(conn, MES_EMAIL_SERVER);
         utl_smtp.command(conn, 'AUTH LOGIN');
-        -- Ð’ Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸Ð¸ Ð¿Ð¾Ð´ÑÑ‚Ð°Ð²Ð»ÑÐµÐ¼ Ð½Ðµ Ð¸Ð¼Ñ, Ð° ÑÑ‰Ð¸Ðº Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð¸Ñ‚ÐµÐ»Ñ
+        -- Â àâòîðèçàöèè ïîäñòàâëÿåì íå èìÿ, à ÿùèê îòïðàâèòåëÿ
         utl_smtp.command(conn, utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw(MES_EMAIL_FROM))));
         utl_smtp.command(conn, utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw(MES_EMAIL_PASSW))));
      end if;
      -- ELHO
      vEhlo_Mes := 'utl_smtp.ehlo';
      vReplies := utl_smtp.ehlo(conn, MES_EMAIL_SERVER);
-     --Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ Ð´Ð»Ñ Ñ‚ÐµÑÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ
+     --èñïîëüçóåòñÿ äëÿ òåñòèðîâàíèÿ
     /* for nn IN 1..vReplies.COUNT
       loop
        vEhlo_Mes := vEhlo_Mes||vReplies(nn).code||' - '||vReplies(nn).text;
@@ -330,7 +330,7 @@ begin
      if MES_EMAIL_AUTH then
         utl_smtp.ehlo(conn, MES_EMAIL_SERVER);
         utl_smtp.command(conn, 'AUTH LOGIN');
-        -- Ð’ Ð°Ð²Ñ‚Ð¾Ñ€Ð¸Ð·Ð°Ñ†Ð¸Ð¸ Ð¿Ð¾Ð´ÑÑ‚Ð°Ð²Ð»ÑÐµÐ¼ Ð½Ðµ Ð¸Ð¼Ñ, Ð° ÑÑ‰Ð¸Ðº Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð¸Ñ‚ÐµÐ»Ñ
+        -- Â àâòîðèçàöèè ïîäñòàâëÿåì íå èìÿ, à ÿùèê îòïðàâèòåëÿ
         utl_smtp.command(conn, utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw(MES_EMAIL_FROM))));
         utl_smtp.command(conn, utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw(MES_EMAIL_PASSW))));
      end if;
@@ -338,7 +338,7 @@ begin
      -- ELHO
      vEhlo_Mes := 'utl_smtp.ehlo';
      vReplies := utl_smtp.ehlo(conn, MES_EMAIL_SERVER);
-     --Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ Ð´Ð»Ñ Ñ‚ÐµÑÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ
+     --èñïîëüçóåòñÿ äëÿ òåñòèðîâàíèÿ
      /*
      for nn IN 1..vReplies.COUNT
       loop
@@ -359,7 +359,7 @@ begin
      -- ELHO
      vEhlo_Mes := 'utl_smtp.ehlo';
      vReplies := utl_smtp.ehlo(conn, MES_EMAIL_SERVER);
-     -- Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐµÑ‚ÑÑ Ð´Ð»Ñ Ñ‚ÐµÑÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ
+     -- èñïîëüçóåòñÿ äëÿ òåñòèðîâàíèÿ
      /*
      for nn IN 1..vReplies.COUNT
       loop
@@ -385,7 +385,7 @@ begin
  ------
  utl_smtp.mail(conn, MES_EMAIL_FROM);
 
- -- Ð¤Ð¾Ñ€Ð¼Ð¸Ñ€ÑƒÐµÐ¼ ÑÐ¿Ð¸ÑÐ¾Ðº Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»ÐµÐ¹ Ð¿Ð¸ÑÑŒÐ¼Ð°
+ -- Ôîðìèðóåì ñïèñîê ïîëó÷àòåëåé ïèñüìà
  vRcpt_list_to := Create_rcvr_list(p_rcvr_email);
  for nn IN 1 .. vRcpt_list_to.count
   loop
@@ -406,7 +406,7 @@ begin
 
  utl_smtp.write_data(conn, utl_tcp.crlf);
  utl_smtp.write_data(conn, 'To: ');
- -- ÐŸÑ€Ð¾ÑÑ‚Ð°Ð²Ð»ÑÐµÐ¼ Ð¸Ð¼ÐµÐ½Ð° Ð´Ð»Ñ Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»ÐµÐ¹
+ -- Ïðîñòàâëÿåì èìåíà äëÿ ïîëó÷àòåëåé
  for nn in 1 .. vRcpt_list_to.count
  loop
    if nn > 1 then
@@ -420,7 +420,7 @@ begin
  end loop;
  utl_smtp.write_data(conn, utl_tcp.crlf);
 
-  -- Ð—Ð°Ð¿Ð¾Ð»Ð½ÑÐµÐ¼ ÑÐ¿Ð¸ÑÐ¾Ðº Ð¿Ð¾Ð»ÑƒÑ‡Ð°Ñ‚ÐµÐ»ÐµÐ¹ ÐºÐ¾Ð¿Ð¸Ð¹ Ð¿Ð¸ÑÑŒÐ¼Ð°
+  -- Çàïîëíÿåì ñïèñîê ïîëó÷àòåëåé êîïèé ïèñüìà
  IF vRcpt_list_copy.count > 0
   then
    utl_smtp.write_data(conn, 'CC: ');
@@ -450,7 +450,7 @@ begin
    Select VALUE_STRING into local_RU_cp from app_parameters_dic where prmt_id = 2115;
     EXCEPTION
      WHEN OTHERS THEN
-        ins_sys_logs(ApplId=>p_appl_id, Message=>vSys_log_marker||'ÐÐµ Ñ€Ð°Ð±Ð¾Ñ‚Ð°ÐµÑ‚ Select VALUE_STRING into local_RU_cp from app_parameters_dic where prmt_id = 2115', IsCommit=>True);
+        ins_sys_logs(ApplId=>p_appl_id, Message=>vSys_log_marker||'Íå ðàáîòàåò Select VALUE_STRING into local_RU_cp from app_parameters_dic where prmt_id = 2115', IsCommit=>True);
   end;
 
  if local_RU_cp is not null then
@@ -465,7 +465,7 @@ begin
  utl_smtp.write_raw_data(conn, utl_raw.cast_to_raw(p_text));
  utl_smtp.write_data(conn, utl_tcp.crlf);
  --*************************************************************************************
- -- Ð’Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ
+ -- Âëîæåíèÿ
  --*************************************************************************************
  IF attachments.count>0 THEN
       FOR x IN 1 .. attachments.count LOOP

@@ -1,119 +1,119 @@
-п»їCREATE OR REPLACE PACKAGE SBC_MESSAGE AS
+CREATE OR REPLACE PACKAGE SBC_MESSAGE AS
 /******************************************************************************
    NAME:       SBC_MESSAGE
-   PURPOSE: РџР°РєРµС‚ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё Рё РѕС‚РїР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№
+   PURPOSE: Пакет для обработки и отпавки сообщений
 
    REVISIONS:
    Ver        Date        Author           Description
    ---------  ----------  ---------------  ------------------------------------
-   1.0        14.05.2008  Dim_ok     1. РЎРѕР·РґР°РЅ РїР°РєРµС‚.
-   1.1        02.06.2008  Dim_ok     1. Р”РѕР±Р°РІР»РµРЅР° С„СѓРЅРєС†РёСЏ РІРѕР·РІСЂР°С‚Р° APPID. /SET_ApplId/
-   1.2        09.06.2008  Dim_ok     1. Р”РѕР±Р°РІР»РµРЅРЅР° РґРѕРї РѕР±Р»Р°Р±РѕС‚РєР° (Р•СЃР»Рё Сѓ СЃРѕРѕР±С‰РµРЅРёСЏ РЅРµ РїСЂРѕСЃС‚Р°РІР»РµРЅ РєР»РёРµС‚ С‚Рѕ РїСЂРѕСЃС‚Р°РІР»СЏРµРј РІ РїСЂРѕС†РµРґСѓСЂРµ SendMessageToMail)
-   1.3        11.09.2008  Dim_ok     1. Р’ РїСЂРѕС†РµРґСѓСЂСѓ HandleError СЃРґРµР»Р°РЅР° Р°РІС‚РѕРЅРѕРјРЅРѕР№ С‚СЂР°РЅР·Р°РєС†РёРµР№
-                          Dim_ok     2. Р’ РїСЂРѕС†РµРґСѓСЂСѓ SBC_SendMail РґРѕР±Р°РІР»РµРЅ РїР°СЂР°РјРµС‚СЂ P_MES_EMAIL_AUTH Р°РІС‚РѕСЂРёР·Р°С†РёРё
-                          Dim_ok     3. РЈСЃС‚С‚Р°РЅРѕРІР»РµРЅРЅР° РїСЂРѕРІРµСЂРєР° РЅР° РїРѕРІС‚РѕСЂРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ
-   1.4        23.12.2013  DP         Р”РѕР±Р°РІР»РµРЅР° РїСЂРѕС†РµРґСѓСЂР° Del_old_mails_f_mess2cust. Р”РѕСЂР°Р±РѕС‚Р°РЅР° ADD_Message РїСЂРѕС†РµРґСѓСЂР° РІ СЃРІСЏР·Рё СЃ РѕР±СЂР°Р±РѕС‚РєРѕР№ РёРЅС„РѕСЂРјР°С†РёРё РёР· MESSAGE_SUBSCRIPTIONS С‚Р°Р±Р»РёС†С‹
-   1.4.2      17.02.2014  AS         РЈРІРµР»РёС‡РµРЅС‹ str, str1, str2, str3 Рё ss РІ READ_BODY_MSG_F.
-   1.4.2      20.02.2014  DP         РР·РјРµРЅРµРЅР° Р»РѕРіРёРєР° РїРѕ РІС‹Р±РѕСЂРєРµ 'РїРѕСЂС‚Р° РїСЂРёР±С‹С‚РёСЏ'.
-   1.4.2      27.02.2014  DP         Р”РѕР±Р°РІР»РµРЅРѕ P_orst_tmms Рё РёРјРµРЅРµРЅР° Р»РѕРіРёРєР° РІС‹Р±РѕСЂРєРё MESSAGES_TEXT, Р·Р°РіРѕР»РѕРІРѕРє СЃРѕРѕР±С‰РµРЅРёСЏ.
-   1.4.4      20.03.2014  DP         РР·РјРµРЅРµРЅР° Р»РѕРіРёРєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ Р СѓСЃСЃРєРѕРіРѕ СЏР·С‹РєР°, V_fl_name.
-   1.4.5      31.03.2014  DP         Р”РѕР±Р°РІР»РµРЅР° emails2line С„СѓРЅРєС†РёСЏ Рё РјРЅРѕРіРѕ e-mails РѕС‚РїСЂР°РІРєР° РїРѕ РѕРґРЅРѕРјСѓ СЃРѕРѕР±С‰РµРЅРёСЋ.
-   1.4.6      16.04.2014  DP         Р”РѕР±Р°РІР»РµРЅР° <РіСЂСѓР· РїРѕ Р·Р°СЏРІРєРµ> РїРµСЂРµРјРµРЅРЅР°СЏ.
-   1.4.7      24.04.2014  DP         РЈР±СЂР°РЅРѕ РІСЂРµРјСЏ РёР· <РґР°С‚Р° СѓР±С‹С‚РёСЏ Рє РєР»РёРµРЅС‚Сѓ> РїРµСЂРµРјРµРЅРЅРѕР№.
-   1.4.8      29.04.2014  DP         РР·РјРµРЅРµРЅР° Р»РѕРіРёРєР° РїРѕ РІС‹Р±РѕСЂРєРµ 'РєРѕРЅС‚РµР№РЅРµСЂ' РїРµСЂРµРјРµРЅРЅРѕР№.
-   1.4.9      20.05.2014  DP         РР·РјРµРЅРµРЅР° Р»РѕРіРёРєР° СЂР°СЃСЃС‹Р»РєРё "Р”Р°С‚Р° РІС‹РїСѓСЃРєР° Р“РўР” " СЃРѕРѕР±С‰РµРЅРёСЏ.
-   2.0.1      04.05.2016  Рђ.Р’. РЎС‚Р°СЂС€РёРЅРёРЅ РЈРґР°Р»РµРЅР° РІСЃС‚Р°РІРєР° РѕС‚Р»Р°РґРѕС‡РЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№ РІ С‚Р°Р±Р»РёС†Сѓ SYS_LOGS
+   1.0        14.05.2008  Dim_ok     1. Создан пакет.
+   1.1        02.06.2008  Dim_ok     1. Добавлена функция возврата APPID. /SET_ApplId/
+   1.2        09.06.2008  Dim_ok     1. Добавленна доп облаботка (Если у сообщения не проставлен клиет то проставляем в процедуре SendMessageToMail)
+   1.3        11.09.2008  Dim_ok     1. В процедуру HandleError сделана автономной транзакцией
+                          Dim_ok     2. В процедуру SBC_SendMail добавлен параметр P_MES_EMAIL_AUTH авторизации
+                          Dim_ok     3. Усттановленна проверка на повторное сообщение
+   1.4        23.12.2013  DP         Добавлена процедура Del_old_mails_f_mess2cust. Доработана ADD_Message процедура в связи с обработкой информации из MESSAGE_SUBSCRIPTIONS таблицы
+   1.4.2      17.02.2014  AS         Увеличены str, str1, str2, str3 и ss в READ_BODY_MSG_F.
+   1.4.2      20.02.2014  DP         Изменена логика по выборке 'порта прибытия'.
+   1.4.2      27.02.2014  DP         Добавлено P_orst_tmms и именена логика выборки MESSAGES_TEXT, заголовок сообщения.
+   1.4.4      20.03.2014  DP         Изменена логика формирования Русского языка, V_fl_name.
+   1.4.5      31.03.2014  DP         Добавлена emails2line функция и много e-mails отправка по одному сообщению.
+   1.4.6      16.04.2014  DP         Добавлена <груз по заявке> переменная.
+   1.4.7      24.04.2014  DP         Убрано время из <дата убытия к клиенту> переменной.
+   1.4.8      29.04.2014  DP         Изменена логика по выборке 'контейнер' переменной.
+   1.4.9      20.05.2014  DP         Изменена логика рассылки "Дата выпуска ГТД " сообщения.
+   2.0.1      04.05.2016  А.В. Старшинин Удалена вставка отладочных сообщений в таблицу SYS_LOGS
 
 ******************************************************************************/
--- РљРѕРґ РїСЂРёР»РѕР¶РµРЅРёСЏ
+-- Код приложения
 
  ApplId NUMBER := 21;
 
--- РџР°СЂР°РјРµС‚СЂС‹ РґР»СЏ РѕС‚РїСЂР°РІРєРё РїРѕС‡С‚С‹
- MES_EMAIL_FROM varchar2(255);   -- РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РёРјРµРЅРё РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
- MES_EMAIL_SERVER varchar2(255); -- РРјСЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№
- MES_EMAIL_PASSW varchar2(255);  -- РџР°СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
- MES_EMAIL_PORT varchar2(50);    -- РџРѕСЂС‚ РґР»СЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°
- MES_EMAIL_NAME varchar2(50);    -- РРјСЏ РІР»Р°РґРµР»СЊС†Р° (РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ) РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
- MES_EMAIL_AUTH boolean ;        -- РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ РЅР° СЃРµСЂРІРµСЂРµ
- MES_WALLET_PATH varchar2(2000); -- РџСѓС‚СЊ Рє РєРѕС€РµР»СЊРєСѓ
- MES_WALLET_PASS varchar2(2000); -- РџР°СЂРѕР»СЊ Рє РєРѕС€РµР»СЊРєСѓ
+-- Параметры для отправки почты
+ MES_EMAIL_FROM varchar2(255);   -- Имя пользователя, от имени которого отправляется почта
+ MES_EMAIL_SERVER varchar2(255); -- Имя почтового сервера для отправки сообщений
+ MES_EMAIL_PASSW varchar2(255);  -- Пароль пользователя, от которого отправляется почта
+ MES_EMAIL_PORT varchar2(50);    -- Порт для почтового сервера
+ MES_EMAIL_NAME varchar2(50);    -- Имя владельца (пользователя) почтового ящика
+ MES_EMAIL_AUTH boolean ;        -- Использовать авторизацию на сервере
+ MES_WALLET_PATH varchar2(2000); -- Путь к кошельку
+ MES_WALLET_PASS varchar2(2000); -- Пароль к кошельку
 
 
--- РќР°СЃС‚СЂРѕР№РєР° РїР°СЂР°РјРµС‚СЂРѕРІ РїРѕС‡С‚С‹
+-- Настройка параметров почты
 PROCEDURE SET_PARAM_EMAIL;
 
--- Р¤СѓРЅРєС†РёСЏ РІРѕР·РІСЂР°С‚Р° ApplId
+-- Функция возврата ApplId
 FUNCTION SET_ApplId RETURN NUMBER;
 
--- Р¤СѓРЅРєС†РёСЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ -- Р РµР·СѓР»СЊС‚Р°С‚ РѕС‚РїСЂР°РІРєРё (1-РѕС€РёР±РєР°, 0-РІСЃРµ РЅРѕСЂРјР°Р»СЊРЅРѕ)
-FUNCTION SBC_SendMail(p_rcvr_name  in varchar2 default 'Р’Р°С€Рµ Р»РёС†Рѕ', -- РРјСЏ РїРѕР»СѓС‡Р°С‚РµР»СЏ
-                      p_rcvr_email in varchar2 , -- РџРѕС‡С‚РѕРІС‹Р№ СЏС‰РёРє РїРѕР»СѓС‡Р°С‚РµР»СЏ
-                      p_subject    in varchar2 ,  -- РўРµРјР° РїРёСЃСЊРјР°
-                      p_text       in varchar2 , -- С‚РµРєСЃС‚ РїРёСЃСЊРјР°
-                      P_MES_EMAIL_FROM   in varchar2 default null,  -- РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РёРјРµРЅРё РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
-			            		P_MES_EMAIL_NAME   in varchar2 default null,  -- РРјСЏ РІР»Р°РґРµР»СЊС†Р° (РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ) РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
-                      P_MES_EMAIL_SERVER in varchar2 default null,  -- РРјСЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№
-                      P_MES_EMAIL_PASSW  in varchar2 default null,  -- РџР°СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
-            					P_MES_EMAIL_PORT varchar2 default null,       -- РџРѕСЂС‚ РґР»СЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°
-  					          P_MES_EMAIL_AUTH boolean default null,        -- РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ РЅР° СЃРµСЂРІРµСЂРµ
-                      p_attachment_name  in varchar2 default null,  -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ С„Р°Р№Р»Р°
-                      p_attachment_mimetype varchar2 default null,  -- РўРёРї РєРѕРґРёСЂРѕРІРєРё С„Р°Р№Р»Р°
-						          P_BLOB Blob default null,                     -- РЎР°Рј С„Р°Р№Р»
-                      p_rcvr_email_copy varchar2 default null       -- РЎРїРёСЃРѕРє Р°РґСЂРµСЃР°С‚РѕСЂ РІ РєРѕРїРёРё РїРёСЃСЊРјР°
+-- Функция отправки сообщения -- Результат отправки (1-ошибка, 0-все нормально)
+FUNCTION SBC_SendMail(p_rcvr_name  in varchar2 default 'Ваше лицо', -- Имя получателя
+                      p_rcvr_email in varchar2 , -- Почтовый ящик получателя
+                      p_subject    in varchar2 ,  -- Тема письма
+                      p_text       in varchar2 , -- текст письма
+                      P_MES_EMAIL_FROM   in varchar2 default null,  -- Имя пользователя, от имени которого отправляется почта
+			            		P_MES_EMAIL_NAME   in varchar2 default null,  -- Имя владельца (пользователя) почтового ящика
+                      P_MES_EMAIL_SERVER in varchar2 default null,  -- Имя почтового сервера для отправки сообщений
+                      P_MES_EMAIL_PASSW  in varchar2 default null,  -- Пароль пользователя, от которого отправляется почта
+            					P_MES_EMAIL_PORT varchar2 default null,       -- Порт для почтового сервера
+  					          P_MES_EMAIL_AUTH boolean default null,        -- Использовать авторизацию на сервере
+                      p_attachment_name  in varchar2 default null,  -- Наименование файла
+                      p_attachment_mimetype varchar2 default null,  -- Тип кодировки файла
+						          P_BLOB Blob default null,                     -- Сам файл
+                      p_rcvr_email_copy varchar2 default null       -- Список адресатор в копии письма
                      ) RETURN NUMBER;
-  -- РџСЂРѕС†РµРґСѓСЂР° РіРµРЅРµСЂР°С†РёРё РїСЂРёРєР»Р°РґРЅРѕР№ РѕС€РёР±РєРё
+  -- Процедура генерации прикладной ошибки
 PROCEDURE RaiseError(
-					   TEXT varchar2 -- РўРµРєСЃС‚ РѕС€РёР±РєРё
-                      ,CODE number default -20000  -- РљРѕРґ РѕС€РёР±РєРё
+					   TEXT varchar2 -- Текст ошибки
+                      ,CODE number default -20000  -- Код ошибки
                        );
 
-  -- РџСЂРѕС†РµРґСѓСЂР° РѕР±СЂР°Р±РѕС‚РєРё РёСЃРєР»СЋС‡РµРЅРёР№ Рё Р·Р°РїРёСЃРё РІ Р»РѕРі
+  -- Процедура обработки исключений и записи в лог
 PROCEDURE HandleError(
-    pErrCode INTEGER,                                 -- РљРѕРґ РѕС€РёР±РєРё Oracle
-    pErrMsg VARCHAR2,                                 -- РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ Oracle
-    pObjectName VARCHAR2                              -- РРјСЏ РѕР±СЉРµРєС‚Р°, РІ РєРѕС‚РѕСЂРѕРј РІРѕР·РЅРёРєР»Р° РѕС€РёР±РєР°
-  );                                                  -- РљРѕРґ РѕС€РёР±РєРё РёР· С‚Р°Р±Р»РёС†С‹ ErrorMsg
+    pErrCode INTEGER,                                 -- Код ошибки Oracle
+    pErrMsg VARCHAR2,                                 -- Текст сообщения об ошибке Oracle
+    pObjectName VARCHAR2                              -- Имя объекта, в котором возникла ошибка
+  );                                                  -- Код ошибки из таблицы ErrorMsg
 
---  Р”РѕР±Р°РІР»РµРЅРёРµ/Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РЅРѕРІРѕРіРѕ С€Р°Р±Р»РѕРЅР°
-PROCEDURE IE_TEMPLATES_MESSAGES(P_DEF TEMPLATES_MESSAGES.DEF%TYPE  -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
-                                    ,P_APPL_APPL_ID TEMPLATES_MESSAGES.APPL_APPL_ID%TYPE  -- РџСЂРёР»РѕР¶РµРЅРёРµ
-                                    ,P_MESSAGES_TEXT TEMPLATES_MESSAGES.MESSAGES_TEXT%TYPE  -- РўРµРєСЃС‚ С€Р°Р±Р»РѕРЅР°
-									,P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null  -- РљРѕР»РёС‡РµСЃС‚РІРѕ РґРЅРµР№
-									,P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null -- Р”Р°С‚Р° СѓРґР°Р»РµРЅРёСЏ
-									,P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null -- РљС‚Рѕ СѓРґР°Р»РёР»
-                                    ,P_TM_ID TEMPLATES_MESSAGES.TM_ID%TYPE DEFAULT NULL  -- РљРѕРґ С€Р°Р±Р»РѕРЅР°
+--  Добавление/Редактирование нового шаблона
+PROCEDURE IE_TEMPLATES_MESSAGES(P_DEF TEMPLATES_MESSAGES.DEF%TYPE  -- Наименование
+                                    ,P_APPL_APPL_ID TEMPLATES_MESSAGES.APPL_APPL_ID%TYPE  -- Приложение
+                                    ,P_MESSAGES_TEXT TEMPLATES_MESSAGES.MESSAGES_TEXT%TYPE  -- Текст шаблона
+									,P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null  -- Количество дней
+									,P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null -- Дата удаления
+									,P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null -- Кто удалил
+                                    ,P_TM_ID TEMPLATES_MESSAGES.TM_ID%TYPE DEFAULT NULL  -- Код шаблона
                                      );
 
--- РЎРїРёСЃРѕРє РїРµСЂРµРјРµРЅРЅС‹С…
+-- Список переменных
 FUNCTION GET_VALUES_MESSAGES(P_APPL_APPL_ID IN NUMBER default null) RETURN TBL_VALUES_MESSAGES;
 
 
--- Р—Р°РјРµРЅСЏРµС‚ РїРµСЂРµРјРµРЅРЅС‹Рµ РІ С‚РµРєСЃС‚Рµ С€Р°Р±Р»РѕРЅР° РЅР° Р·РЅР°С‡РµРЅРёСЏ Рё РІРѕР·РІСЂР°С‰СЏРµС‚ РіРѕС‚РѕРІС‹Р№ С‚РµРєСЃС‚
-FUNCTION SET_VALUES_MESSAGES(P_ORD_ID   ORDERS.ORD_ID%TYPE,  -- РљРѕРґ Р·Р°РєР°Р·Р°
-                             P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE -- РўРµРєСЃС‚ С€Р°Р±Р»РѕРЅР°
+-- Заменяет переменные в тексте шаблона на значения и возвращяет готовый текст
+FUNCTION SET_VALUES_MESSAGES(P_ORD_ID   ORDERS.ORD_ID%TYPE,  -- Код заказа
+                             P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE -- Текст шаблона
 							  ) RETURN VARCHAR2;
 
--- Р”РѕР±Р°РІРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ
-PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type  -- РљРѕРґ СЃС‚Р°С‚СѓСЃР°
-                      ,P_ORD_ORD_ID ORDERS.ORD_ID%type  -- РљРѕРґ Р·Р°РєР°Р·Р°
-                      ,P_orst_tmms orders.stop_order%type      default 0 -- Р•СЃР»Рё P_orst_tmms = 0 С‚Рѕ РїРµСЂРµРґР°Р»Рё ORST_ID, Р° РµСЃР»Рё P_orst_tmms = 1 С‚Рѕ РїРµСЂРµРґР°Р»Рё TM_ID
+-- Добавить сообщение
+PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type  -- Код статуса
+                      ,P_ORD_ORD_ID ORDERS.ORD_ID%type  -- Код заказа
+                      ,P_orst_tmms orders.stop_order%type      default 0 -- Если P_orst_tmms = 0 то передали ORST_ID, а если P_orst_tmms = 1 то передали TM_ID
                       );
 
--- РћР±СЂР°Р±РѕС‚РєР° СЃРѕРѕР±С‰РµРЅРёСЏ
-PROCEDURE EXE_Message(P_MSCM_ID MESSAGES2CUSTOMERS.MSCM_ID%type,  -- РљРѕРґ СЃРѕРѕР±С‰РµРЅРёСЏ
-                      P_message_text OUT MESSAGES2CUSTOMERS.message_text%type,  -- РўРµРєСЃ СЃРѕРѕР±С‰РµРЅРёСЏ
-					            P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- РђРґСЂРµСЃ РѕС‚РїСЂР°РІРёС‚РµР»СЏ
-				           	  P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- РҐРѕР»РґРёРЅРі
-			          		  P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- РљР»РёРµРЅС‚
-                      P_orst_tmms  MESSAGES2CUSTOMERS.orst_tmms%type, -- Р•СЃР»Рё P_orst_tmms = 0 С‚Рѕ РїРµСЂРµРґР°Р»Рё ORST_ID, Р° РµСЃР»Рё P_orst_tmms = 1 С‚Рѕ РїРµСЂРµРґР°Р»Рё TM_ID
-                      P_tm_ms_def OUT templates_messages.def%type); -- Р·Р°РіРѕР»РѕРІРѕРє СЃРѕРѕР±С‰РµРЅРёСЏ
+-- Обработка сообщения
+PROCEDURE EXE_Message(P_MSCM_ID MESSAGES2CUSTOMERS.MSCM_ID%type,  -- Код сообщения
+                      P_message_text OUT MESSAGES2CUSTOMERS.message_text%type,  -- Текс сообщения
+					            P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- Адрес отправителя
+				           	  P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- Холдинг
+			          		  P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- Клиент
+                      P_orst_tmms  MESSAGES2CUSTOMERS.orst_tmms%type, -- Если P_orst_tmms = 0 то передали ORST_ID, а если P_orst_tmms = 1 то передали TM_ID
+                      P_tm_ms_def OUT templates_messages.def%type); -- заголовок сообщения
 
 
--- РЈРґР°Р»СЏРµС‚ Р»РёС€РЅРёРµ С‚СЌРіРё
+-- Удаляет лишние тэги
 FUNCTION READ_BODY_MSG_F(P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE) RETURN VARCHAR2;
 
--- РћС‚РїСЂР°РІРєР° СЃРѕРѕР±С‰РµРЅРёР№, РєРѕС‚РѕСЂС‹Рµ РЅРµ РѕС‚РїСЂР°РІР»РµРЅРЅС‹
+-- Отправка сообщений, которые не отправленны
 PROCEDURE SendMessageToMail;
 
 --*************************************************************************************************
@@ -124,7 +124,7 @@ PROCEDURE SendMessageToMail;
 procedure Del_old_mails_f_mess2cust;
 
 --*************************************************************************************************
--- РџРµСЂРµРІРѕРґ Р·РЅР°С‡РµРЅРёР№ РїСЂРµРґСЃС‚Р°РІР»РµРЅРЅС‹С… РІ РІРёРґРµ СЃС‚РѕР»Р±С†Р° РІ Р»РёРЅРµР№РЅС‹Рµ
+-- Перевод значений представленных в виде столбца в линейные
 --*************************************************************************************************
 
 function emails2line(P_ORD_ID IN T_ORDERS.ORD_ID%TYPE) RETURN VARCHAR2;
@@ -133,13 +133,13 @@ END SBC_MESSAGE;
 CREATE OR REPLACE PACKAGE BODY SBC_MESSAGE AS
 
 
--- Р¤СѓРЅРєС†РёСЏ РІРѕР·РІСЂР°С‚Р° ApplId
+-- Функция возврата ApplId
 FUNCTION SET_ApplId RETURN NUMBER IS
 Begin
   RETURN ApplId;
 end;
 
--- РќР°СЃС‚СЂРѕР№РєР° РїР°СЂР°РјРµС‚СЂРѕРІ РїРѕС‡С‚С‹
+-- Настройка параметров почты
 PROCEDURE SET_PARAM_EMAIL IS
 CURVAL VARCHAR2(255);
   FUNCTION SET_APP_PARAM(Name_Param VARCHAR2) RETURN varchar2 IS
@@ -155,80 +155,80 @@ CURVAL VARCHAR2(255);
 	          Value_Param :='-';
      end;
 	   if Value_Param='-' then
-        HandleError(-20000, 'РќРµ РЅР°Р№РґРµРЅ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ РїР°СЂР°РјРµС‚СЂ:"'||UPPER(Trim(Name_Param))||'"', 'SET_PARAM_EMAIL');
-        --	 ins_sys_logs(ApplId=>ApplId,Message=>'РќРµ РЅР°Р№РґРµРЅ РЅР°СЃС‚СЂРѕРµС‡РЅС‹Р№ РїР°СЂР°РјРµС‚СЂ:"'||UPPER(Trim(Name_Param))||'"');
+        HandleError(-20000, 'Не найден настроечный параметр:"'||UPPER(Trim(Name_Param))||'"', 'SET_PARAM_EMAIL');
+        --	 ins_sys_logs(ApplId=>ApplId,Message=>'Не найден настроечный параметр:"'||UPPER(Trim(Name_Param))||'"');
 	   end if;
      RETURN Value_Param;
   end;
 
 begin
-  -- РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РёРјРµРЅРё РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
+  -- Имя пользователя, от имени которого отправляется почта
   MES_EMAIL_FROM := SET_APP_PARAM('MES_EMAIL_FROM');
-  -- РРјСЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№
+  -- Имя почтового сервера для отправки сообщений
   MES_EMAIL_SERVER := SET_APP_PARAM('MES_EMAIL_SERVER');
-  -- РџР°СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
+  -- Пароль пользователя, от которого отправляется почта
   MES_EMAIL_PASSW := SET_APP_PARAM('MES_EMAIL_PASSW');
-  -- РџРѕСЂС‚ РґР»СЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°
+  -- Порт для почтового сервера
   MES_EMAIL_PORT := SET_APP_PARAM('MES_EMAIL_PORT');
-  -- РРјСЏ РІР»Р°РґРµР»СЊС†Р° (РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ) РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
+  -- Имя владельца (пользователя) почтового ящика
   MES_EMAIL_NAME := SET_APP_PARAM('MES_EMAIL_NAME');
-  -- РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ РЅР° СЃРµСЂРІРµСЂРµ
+  -- Использовать авторизацию на сервере
   if SET_APP_PARAM('MES_EMAIL_AUTH')='1' then
      MES_EMAIL_AUTH := true;
   else
      MES_EMAIL_AUTH := False;
   end if;
-  -- РџСѓС‚СЊ Рє РєРѕС€РµР»СЊРєСѓ
+  -- Путь к кошельку
   MES_WALLET_PATH := SET_APP_PARAM('MES_WALLET_PATH');
-  -- РђРґСЂРµСЃ РєРѕС€РµР»СЊРєР°
+  -- Адрес кошелька
   MES_WALLET_PASS := SET_APP_PARAM('MES_WALLET_PASS');
 end;
 
--- РџСЂРѕС†РµРґСѓСЂР° РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ
-/*  РџСЂРёРјРµСЂ
-              res:=SBC_SendMail('РљР»РёРµРЅС‚',
+-- Процедура отправки сообщения
+/*  Пример
+              res:=SBC_SendMail('Клиент',
                            loop_1.send_to,
-                           'РћР±СЂР°Р±РѕС‚РєР° РЎРѕР±С‹С‚РёР№',
+                           'Обработка Событий',
                           '<font size="14px" >'||'<p>'||concat_text||'</p></font>');
-РџСЂРёРјРµСЂ 2 СЃС‡РµСЂРµР· РїРѕС‡С‚РѕРІС‹Р№ СЃРµСЂРІРµСЂ MAIL
+Пример 2 счерез почтовый сервер MAIL
 declare
   nn number;
 begin
-              nn:=SBC_MESSAGE.SBC_SendMail(p_rcvr_name=>'РљР»РёРµРЅС‚',
-                          p_rcvr_email=>'Dim_ok@sbconsulting.ru', -- РџРѕС‡С‚РѕРІС‹Р№ СЏС‰РёРє РїРѕР»СѓС‡Р°С‚РµР»СЏ
-                          p_subject=>'РџСЂРёРІРµС‚11', -- РўРµРјР° РїРёСЃСЊРјР°
-                          p_text=>'<font size="14px" >'||'<p>'||'РўР°РєРёРµ РІРѕС‚ РґРµР»Р°'||'</p></font>', -- С‚РµРєСЃС‚ РїРёСЃСЊРјР°
-                          P_MES_EMAIL_FROM=>'test@mail.ru',   -- РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РёРјРµРЅРё РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
-						  P_MES_EMAIL_NAME=>'test', -- РРјСЏ РІР»Р°РґРµР»СЊС†Р° (РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ) РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
-                          P_MES_EMAIL_SERVER=>'smtp.mail.ru', -- РРјСЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№
-                          P_MES_EMAIL_PASSW=>'test',  -- РџР°СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
-						  P_MES_EMAIL_PORT=>2525,  -- РџРѕСЂС‚ РґР»СЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°
-  						  P_MES_EMAIL_AUTH=>true  -- РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ РЅР° СЃРµСЂРІРµСЂРµ
+              nn:=SBC_MESSAGE.SBC_SendMail(p_rcvr_name=>'Клиент',
+                          p_rcvr_email=>'Dim_ok@sbconsulting.ru', -- Почтовый ящик получателя
+                          p_subject=>'Привет11', -- Тема письма
+                          p_text=>'<font size="14px" >'||'<p>'||'Такие вот дела'||'</p></font>', -- текст письма
+                          P_MES_EMAIL_FROM=>'test@mail.ru',   -- Имя пользователя, от имени которого отправляется почта
+						  P_MES_EMAIL_NAME=>'test', -- Имя владельца (пользователя) почтового ящика
+                          P_MES_EMAIL_SERVER=>'smtp.mail.ru', -- Имя почтового сервера для отправки сообщений
+                          P_MES_EMAIL_PASSW=>'test',  -- Пароль пользователя, от которого отправляется почта
+						  P_MES_EMAIL_PORT=>2525,  -- Порт для почтового сервера
+  						  P_MES_EMAIL_AUTH=>true  -- Использовать авторизацию на сервере
 						  );
-  RAISE_APPLICATION_ERROR(-20000, 'Р РµР·СѓР»СЊС‚Р°С‚ РІС‹РїРѕР»РЅРµРЅРёСЏ='||To_Char(nn));
+  RAISE_APPLICATION_ERROR(-20000, 'Результат выполнения='||To_Char(nn));
 end;
 
 */
-FUNCTION SBC_SendMail(p_rcvr_name  in varchar2 default 'Р’Р°С€Рµ Р»РёС†Рѕ', -- РРјСЏ РїРѕР»СѓС‡Р°С‚РµР»СЏ
-                      p_rcvr_email in varchar2 , -- РџРѕС‡С‚РѕРІС‹Р№ СЏС‰РёРє РїРѕР»СѓС‡Р°С‚РµР»СЏ
-                      p_subject    in varchar2 ,  -- РўРµРјР° РїРёСЃСЊРјР°
-                      p_text       in varchar2 , -- С‚РµРєСЃС‚ РїРёСЃСЊРјР°
-                      P_MES_EMAIL_FROM   in varchar2 default null,  -- РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РёРјРµРЅРё РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
-			            		P_MES_EMAIL_NAME   in varchar2 default null,  -- РРјСЏ РІР»Р°РґРµР»СЊС†Р° (РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ) РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
-                      P_MES_EMAIL_SERVER in varchar2 default null,  -- РРјСЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№
-                      P_MES_EMAIL_PASSW  in varchar2 default null,  -- РџР°СЂРѕР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, РѕС‚ РєРѕС‚РѕСЂРѕРіРѕ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ РїРѕС‡С‚Р°
-            					P_MES_EMAIL_PORT varchar2 default null,       -- РџРѕСЂС‚ РґР»СЏ РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°
-  					          P_MES_EMAIL_AUTH boolean default null,        -- РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ Р°РІС‚РѕСЂРёР·Р°С†РёСЋ РЅР° СЃРµСЂРІРµСЂРµ
-                      p_attachment_name  in varchar2 default null,  -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ С„Р°Р№Р»Р°
-                      p_attachment_mimetype varchar2 default null,  -- РўРёРї РєРѕРґРёСЂРѕРІРєРё С„Р°Р№Р»Р°
-						          P_BLOB Blob default null,                     -- РЎР°Рј С„Р°Р№Р»
-                      p_rcvr_email_copy varchar2 default null       -- РЎРїРёСЃРѕРє Р°РґСЂРµСЃР°С‚РѕСЂ РІ РєРѕРїРёРё РїРёСЃСЊРјР°
+FUNCTION SBC_SendMail(p_rcvr_name  in varchar2 default 'Ваше лицо', -- Имя получателя
+                      p_rcvr_email in varchar2 , -- Почтовый ящик получателя
+                      p_subject    in varchar2 ,  -- Тема письма
+                      p_text       in varchar2 , -- текст письма
+                      P_MES_EMAIL_FROM   in varchar2 default null,  -- Имя пользователя, от имени которого отправляется почта
+			            		P_MES_EMAIL_NAME   in varchar2 default null,  -- Имя владельца (пользователя) почтового ящика
+                      P_MES_EMAIL_SERVER in varchar2 default null,  -- Имя почтового сервера для отправки сообщений
+                      P_MES_EMAIL_PASSW  in varchar2 default null,  -- Пароль пользователя, от которого отправляется почта
+            					P_MES_EMAIL_PORT varchar2 default null,       -- Порт для почтового сервера
+  					          P_MES_EMAIL_AUTH boolean default null,        -- Использовать авторизацию на сервере
+                      p_attachment_name  in varchar2 default null,  -- Наименование файла
+                      p_attachment_mimetype varchar2 default null,  -- Тип кодировки файла
+						          P_BLOB Blob default null,                     -- Сам файл
+                      p_rcvr_email_copy varchar2 default null       -- Список адресатор в копии письма
                      ) RETURN NUMBER IS
  V_RES              number;
 begin
  BEGIN
     V_RES:=1;
--- РЈСЃС‚Р°РЅРѕРІРєР° РїРµСЂРµРјРµРЅРЅС‹С… РёР· Р±Р°Р·С‹ ************************************************************************************
+-- Установка переменных из базы ************************************************************************************
     SET_PARAM_EMAIL;
     if (trim(P_MES_EMAIL_FROM) IS NOT NULL)   then MES_EMAIL_FROM   := P_MES_EMAIL_FROM; end if;
     if (trim(P_MES_EMAIL_SERVER) IS NOT NULL) then MES_EMAIL_SERVER := P_MES_EMAIL_SERVER; end if;
@@ -246,7 +246,7 @@ begin
                                 p_subject => p_subject,
                                 p_text => p_text,
                                 p_appl_id => ApplId ,
-                                p_sys_log_marker => 'РћС‚РїСЂР°РІРєР° СЃРѕРѕР±С‰РµРЅРёР№ РєР»РёРµРЅС‚Р°Рј',
+                                p_sys_log_marker => 'Отправка сообщений клиентам',
                                 p_mes_email_from => MES_EMAIL_FROM,
                                 p_mes_email_name => MES_EMAIL_NAME,
                                 p_mes_email_server => MES_EMAIL_SERVER,
@@ -259,18 +259,18 @@ begin
  end;
 end;
 
--- РџСЂРѕС†РµРґСѓСЂР° РіРµРЅРµСЂР°С†РёРё РїСЂРёРєР»Р°РґРЅРѕР№ РѕС€РёР±РєРё
-PROCEDURE RaiseError(TEXT varchar2,              -- РўРµРєСЃС‚ РѕС€РёР±РєРё
-                     CODE number default -20000  -- РљРѕРґ РѕС€РёР±РєРё
+-- Процедура генерации прикладной ошибки
+PROCEDURE RaiseError(TEXT varchar2,              -- Текст ошибки
+                     CODE number default -20000  -- Код ошибки
                     ) IS
 BEGIN
     RAISE_APPLICATION_ERROR(-20000, TEXT);
 END;
 
-  -- РџСЂРѕС†РµРґСѓСЂР° РѕР±СЂР°Р±РѕС‚РєРё РёСЃРєР»СЋС‡РµРЅРёР№
-PROCEDURE HandleError(pErrCode INTEGER,    -- РљРѕРґ РѕС€РёР±РєРё Oracle
-                      pErrMsg VARCHAR2,    -- РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ Oracle
-                      pObjectName VARCHAR2 -- РРјСЏ РѕР±СЉРµРєС‚Р°, РІ РєРѕС‚РѕСЂРѕРј РІРѕР·РЅРёРєР»Р° РѕС€РёР±РєР°
+  -- Процедура обработки исключений
+PROCEDURE HandleError(pErrCode INTEGER,    -- Код ошибки Oracle
+                      pErrMsg VARCHAR2,    -- Текст сообщения об ошибке Oracle
+                      pObjectName VARCHAR2 -- Имя объекта, в котором возникла ошибка
                      ) IS
 pragma autonomous_transaction;
 BEGIN
@@ -280,37 +280,37 @@ BEGIN
      ins_sys_logs(ApplId=>ApplId,Message=>pObjectName||', '||pErrMsg, IsCommit=>False);
    END IF;
    CASE pErrCode
-      -- РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РёСЃРєР»СЋС‡РµРЅРёСЏ Oracle Рё РґРѕРјРѕСЂРѕС‰РµРЅРЅС‹Рµ РІ SBConsulting
-	    WHEN -6530 then RaiseError('РџРѕРїС‹С‚РєР° РґРѕСЃС‚СѓРїР° Рє РЅРµРёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅРЅРѕР№ РїРµСЂРµРјРµРЅРЅРѕР№ (ACCESS_INTO_NULL)',pErrCode);
-      WHEN -6592 then RaiseError('РќРµ РЅР°Р№РґРµРЅРѕ Р·РЅР°С‡РµРЅРёРµ РІ РѕРїРµСЂР°С‚РѕСЂРµ CASE (CASE_NOT_FOUND)',pErrCode);
-      WHEN -6511 then RaiseError('РџРѕРїС‹С‚РєР° РѕС‚РєСЂС‹С‚СЊ РѕС‚РєСЂС‹С‚С‹Р№ РєСѓСЂСЃРѕСЂ (CURSOR_ALREADY_OPEN)',pErrCode);
-      WHEN -1    then RaiseError('Р—Р°РїРёСЃСЊ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ (DUP_VAL_ON_INDEX)',pErrCode);
-      WHEN -1001 then RaiseError('РћС€РёР±РѕС‡РЅР°СЏ РѕРїРµСЂР°С†РёСЏ СЃ РєСѓСЂСЃРѕСЂРѕРј (INVALID_CURSOR)',pErrCode);
-      WHEN -1722 then RaiseError('РћС€РёР±РєР° РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ СЃС‚СЂРѕРєРё РІ С‡РёСЃР»Рѕ (INVALID_NUMBER)',pErrCode);
-      WHEN 100   then RaiseError('РќРµ РЅР°Р№РґРµРЅС‹ Р·Р°РїРёСЃРё, СѓРґРѕРІР»РµС‚РІРѕСЂСЏСЋС‰РёРµ СѓСЃР»РѕРІРёСЋ (NO_DATA_FOUND)',pErrCode);
-      WHEN -6501 then RaiseError('Р’РЅСѓС‚СЂРµРЅРЅСЏСЏ РѕС€РёР±РєР° PL/SQL (PROGRAM_ERROR)',pErrCode);
-      WHEN -6504 then RaiseError('РќРµ СЃРѕРІРїР°РґРµРЅРёРµ С‚РёРїРѕРІ (ROWTYPE_MISMATCH)',pErrCode);
-      WHEN -6500 then RaiseError('РћС€РёР±РєР° РїР°РјСЏС‚Рё (STORAGE_ERROR)',pErrCode);
-      WHEN -1410 then RaiseError('РќРµРїСЂР°РІРёР»СЊРЅС‹Р№ СЃРёСЃС‚РµРјРЅС‹Р№ РЅРѕРјРµСЂ Р·Р°РїРёСЃРё (SYS_INVALID_ROWID)',pErrCode);
-      WHEN -51   then RaiseError('Р’СЂРµРјСЏ РѕР¶РёРґР°РЅРёСЏ СЂРµСЃСѓСЂСЃР° РёСЃС‚РµРєР»Рѕ (TIMEOUT_ON_RESOURCE)',pErrCode);
-      WHEN -1422 then RaiseError('РЎР»РёС€РєРѕРј Р±РѕР»СЊС€РѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ (TOO_MANY_ROWS)',pErrCode);
-      WHEN -6502 then RaiseError('РћС€РёР±РєР° РїСЂРёСЃРІРѕРµРЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ РїРµСЂРµРјРµРЅРЅРѕР№ (VALUE_ERROR)',pErrCode);
-      WHEN -1476 then RaiseError('Р”РµР»РµРЅРёРµ РЅР° РЅРѕР»СЊ (ZERO_DIVIDE)',pErrCode);
-      WHEN -2292 then RaiseError('РЎСѓС‰РµСЃС‚РІСѓСЋС‚ РїРѕСЂРѕР¶РґРµРЅРЅС‹Рµ Р·Р°РїРёСЃРё (INTEGRITY_CONSTRAINT)',pErrCode);
+      -- Стандартные исключения Oracle и доморощенные в SBConsulting
+	    WHEN -6530 then RaiseError('Попытка доступа к неинициализированной переменной (ACCESS_INTO_NULL)',pErrCode);
+      WHEN -6592 then RaiseError('Не найдено значение в операторе CASE (CASE_NOT_FOUND)',pErrCode);
+      WHEN -6511 then RaiseError('Попытка открыть открытый курсор (CURSOR_ALREADY_OPEN)',pErrCode);
+      WHEN -1    then RaiseError('Запись уже существует (DUP_VAL_ON_INDEX)',pErrCode);
+      WHEN -1001 then RaiseError('Ошибочная операция с курсором (INVALID_CURSOR)',pErrCode);
+      WHEN -1722 then RaiseError('Ошибка преобразования строки в число (INVALID_NUMBER)',pErrCode);
+      WHEN 100   then RaiseError('Не найдены записи, удовлетворяющие условию (NO_DATA_FOUND)',pErrCode);
+      WHEN -6501 then RaiseError('Внутренняя ошибка PL/SQL (PROGRAM_ERROR)',pErrCode);
+      WHEN -6504 then RaiseError('Не совпадение типов (ROWTYPE_MISMATCH)',pErrCode);
+      WHEN -6500 then RaiseError('Ошибка памяти (STORAGE_ERROR)',pErrCode);
+      WHEN -1410 then RaiseError('Неправильный системный номер записи (SYS_INVALID_ROWID)',pErrCode);
+      WHEN -51   then RaiseError('Время ожидания ресурса истекло (TIMEOUT_ON_RESOURCE)',pErrCode);
+      WHEN -1422 then RaiseError('Слишком большое количество записей (TOO_MANY_ROWS)',pErrCode);
+      WHEN -6502 then RaiseError('Ошибка присвоения значения переменной (VALUE_ERROR)',pErrCode);
+      WHEN -1476 then RaiseError('Деление на ноль (ZERO_DIVIDE)',pErrCode);
+      WHEN -2292 then RaiseError('Существуют порожденные записи (INTEGRITY_CONSTRAINT)',pErrCode);
    ELSE
       RaiseError(pObjectName||', '||pErrMsg,pErrCode);
    END CASE;
    commit;
 END HandleError;
 
---  Р”РѕР±Р°РІР»РµРЅРёРµ/Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РЅРѕРІРѕРіРѕ С€Р°Р±Р»РѕРЅР°
-PROCEDURE IE_TEMPLATES_MESSAGES(P_DEF TEMPLATES_MESSAGES.DEF%TYPE,                             -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
-                                P_APPL_APPL_ID TEMPLATES_MESSAGES.APPL_APPL_ID%TYPE,           -- РџСЂРёР»РѕР¶РµРЅРёРµ
-                                P_MESSAGES_TEXT TEMPLATES_MESSAGES.MESSAGES_TEXT%TYPE,         -- РўРµРєСЃС‚ С€Р°Р±Р»РѕРЅР°
-									              P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null,  -- РљРѕР»РёС‡РµСЃС‚РІРѕ РґРЅРµР№
-									              P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null,      -- Р”Р°С‚Р° СѓРґР°Р»РµРЅРёСЏ
-									              P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null,      -- РљС‚Рѕ СѓРґР°Р»РёР»
-                                P_TM_ID TEMPLATES_MESSAGES.TM_ID%TYPE DEFAULT NULL             -- РљРѕРґ С€Р°Р±Р»РѕРЅР°
+--  Добавление/Редактирование нового шаблона
+PROCEDURE IE_TEMPLATES_MESSAGES(P_DEF TEMPLATES_MESSAGES.DEF%TYPE,                             -- Наименование
+                                P_APPL_APPL_ID TEMPLATES_MESSAGES.APPL_APPL_ID%TYPE,           -- Приложение
+                                P_MESSAGES_TEXT TEMPLATES_MESSAGES.MESSAGES_TEXT%TYPE,         -- Текст шаблона
+									              P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null,  -- Количество дней
+									              P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null,      -- Дата удаления
+									              P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null,      -- Кто удалил
+                                P_TM_ID TEMPLATES_MESSAGES.TM_ID%TYPE DEFAULT NULL             -- Код шаблона
                                ) IS
 V_TM_ID number;
 EDIT boolean;
@@ -318,7 +318,7 @@ V_RESULT VARCHAR2(2000);
 V_MESSAGES_TEXT VARCHAR2(2000);
 Begin
    IF (trim(P_MESSAGES_TEXT) IS NULL) THEN
-      RaiseError('РќРµ РІРІРµР»Рё С‚РµРєСЃС‚ С€Р°Р±Р»РѕРЅР°!!!');
+      RaiseError('Не ввели текст шаблона!!!');
    END IF;
    IF (trim(P_TM_ID) IS NULL) THEN
 	    EDIT := False;
@@ -327,21 +327,21 @@ Begin
       EDIT := True;
       V_TM_ID := P_TM_ID;
    END IF;
-   -- РџСЂРѕРІРµСЂРєР° РЅР° С‚РµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ
+   -- Проверка на текст сообщения
    V_MESSAGES_TEXT := P_MESSAGES_TEXT;
-   -- РЈРґР°Р»СЏРµРј РїРµСЂРµРјРµРЅРЅС‹Рµ
+   -- Удаляем переменные
    For DAN in (Select DEF
                  from table(cast(SBC_MESSAGE.GET_VALUES_MESSAGES as tbl_VALUES_MESSAGES))
               )loop
       V_MESSAGES_TEXT := REPLACE(UPPER(V_MESSAGES_TEXT),UPPER(DAN.DEF),'');
    end loop;
-   -- РїСЂРѕРІРµСЂСЏРµРј РЅР° РѕСЃС‚Р°РІС€РёРµСЃСЏ РїРµСЂРµРјРµРЅС‹Рµ
+   -- проверяем на оставшиеся переменые
    if INSTR(V_MESSAGES_TEXT,'<') <> 0 Then
-      RaiseError('РќРµРІРµСЂРЅС‹Р№ С‚РµРєСЃС‚ С€Р°Р±Р»РѕРЅР°, РїРµСЂРµРјРµРЅРЅР°СЏ ('||SUBSTR(V_MESSAGES_TEXT,INSTR(V_MESSAGES_TEXT,'<'),INSTR(V_MESSAGES_TEXT,'>')-INSTR(V_MESSAGES_TEXT,'<')+1)||')РЅРµ РЅР°Р№РґРµРЅРЅР° РІ СЃРїРёСЃРєРµ РїРµСЂРµРјРµРЅРЅС‹С….');
+      RaiseError('Неверный текст шаблона, переменная ('||SUBSTR(V_MESSAGES_TEXT,INSTR(V_MESSAGES_TEXT,'<'),INSTR(V_MESSAGES_TEXT,'>')-INSTR(V_MESSAGES_TEXT,'<')+1)||')не найденна в списке переменных.');
    end if;
 
    Begin
-	     if EDIT then -- Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ
+	     if EDIT then -- Редактирование
 	        UPDATE TEMPLATES_MESSAGES
 	           SET TM_ID = P_TM_ID,
 	               DEF = P_DEF,
@@ -351,7 +351,7 @@ Begin
                  DEL_DATE = P_DEL_DATE,
                  DEL_USER=P_DEL_USER
 	         WHERE TM_ID = V_TM_ID;
-	     Else -- Р’РЅРµСЃРµРЅРёРµ РЅРѕРІРѕРіРѕ
+	     Else -- Внесение нового
           INSERT into TEMPLATES_MESSAGES(TM_ID, DEF, APPL_APPL_ID, MESSAGES_TEXT, STORE_DAYS, DEL_DATE, DEL_USER)
           VALUES(V_TM_ID, P_DEF, P_APPL_APPL_ID, P_MESSAGES_TEXT, P_STORE_DAYS, P_DEL_DATE, P_DEL_USER);
 	     end if;
@@ -361,72 +361,72 @@ Begin
    end;
 end;
 
--- РЎРїРёСЃРѕРє РїРµСЂРµРјРµРЅРЅС‹С…
+-- Список переменных
 FUNCTION GET_VALUES_MESSAGES(P_APPL_APPL_ID IN NUMBER default null)
   RETURN TBL_VALUES_MESSAGES IS
 P_VALUES_MESSAGES TBL_VALUES_MESSAGES := TBL_VALUES_MESSAGES();
 i number;
 begin
-    -- Р—Р°РЅРѕСЃРёРј РїРµСЂРµРјРµРЅРЅС‹Рµ
+    -- Заносим переменные
     i:=0;
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РЅРѕРјРµСЂ Р·Р°РєР°Р·Р°>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<номер заказа>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° Р·Р°РєР°Р·Р°>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата заказа>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° РІС‹РїСѓСЃРєР° Р“РўР”>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата выпуска ГТД>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° РѕС‚РіСЂСѓР·РєРё>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата отгрузки>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° РІС‹РіСЂСѓР·РєРё>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата выгрузки>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РєРѕРЅС‚РµР№РЅРµСЂ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<контейнер>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РіСЂСѓР·РѕРѕС‚РїСЂР°РІРёС‚РµР»СЊ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<грузоотправитель>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РіРѕСЂРѕРґ РѕС‚РїСЂР°РІРєРё>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<город отправки>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° РїРѕРіСЂСѓР·РєРё>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата погрузки>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<СЃСѓРґРЅРѕ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<судно>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РїРѕСЂС‚ РїСЂРёР±С‹С‚РёСЏ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<порт прибытия>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РіРѕСЂРѕРґ РїСЂРёР±С‹С‚РёСЏ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<город прибытия>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РѕР¶РёРґР°РµРјР°СЏ РґР°С‚Р°>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<ожидаемая дата>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° РїСЂРёР±С‹С‚РёСЏ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата прибытия>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° СѓР±С‹С‚РёСЏ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата убытия>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РЅРѕРјРµСЂ Р°РІС‚Рѕ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<номер авто>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<С„Р°РјРёР»РёСЏ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<фамилия>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<С‚РµР»РµС„РѕРЅ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<телефон>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РІРЅСѓС‚СЂРµРЅРЅРёР№ РЅРѕРјРµСЂ Р·Р°РєР°Р·Р°>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<внутренний номер заказа>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РїР»Р°РЅРёСЂСѓРµРјР°СЏ РґР°С‚Р° РїСЂРёР±С‹С‚РёСЏ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<планируемая дата прибытия>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<СЃРєР»Р°Рґ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<склад>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РЅРѕРјРµСЂ Р°РІС‚Рѕ Рє РєР»РёРµРЅС‚Сѓ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<номер авто к клиенту>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<С„Р°РјРёР»РёСЏ Рє РєР»РёРµРЅС‚Сѓ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<фамилия к клиенту>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° СѓР±С‹С‚РёСЏ Рє РєР»РёРµРЅС‚Сѓ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата убытия к клиенту>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<С‚РµР»РµС„РѕРЅ Рє РєР»РёРµРЅС‚Сѓ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<телефон к клиенту>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РґР°С‚Р° РїРѕРґР°С‡Рё>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<дата подачи>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
-    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<РіСЂСѓР· РїРѕ Р·Р°СЏРІРєРµ>',null);
+    P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<груз по заявке>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
     P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<br>',null);
 
--- РўСЌРіРё
+-- Тэги
     i:=i+1; P_VALUES_MESSAGES.extend;
     P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<b>',null);
     i:=i+1; P_VALUES_MESSAGES.extend;
@@ -437,9 +437,9 @@ begin
 	RETURN (P_VALUES_MESSAGES);
 end;
 
--- Р—Р°РјРµРЅСЏРµС‚ РїРµСЂРµРјРµРЅРЅС‹Рµ РІ С‚РµРєСЃС‚Рµ С€Р°Р±Р»РѕРЅР° РЅР° Р·РЅР°С‡РµРЅРёСЏ Рё РІРѕР·РІСЂР°С‰СЏРµС‚ РіРѕС‚РѕРІС‹Р№ С‚РµРєСЃС‚
-FUNCTION SET_VALUES_MESSAGES(P_ORD_ID   ORDERS.ORD_ID%TYPE,                        -- РљРѕРґ Р·Р°РєР°Р·Р°
-                             P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE  -- РўРµРєСЃС‚ С€Р°Р±Р»РѕРЅР°
+-- Заменяет переменные в тексте шаблона на значения и возвращяет готовый текст
+FUNCTION SET_VALUES_MESSAGES(P_ORD_ID   ORDERS.ORD_ID%TYPE,                        -- Код заказа
+                             P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE  -- Текст шаблона
 							  ) RETURN VARCHAR2 IS
 V_MSG_INFO     APP_PARAMETERS.VALUE_STRING%TYPE;
 V_ORD_NUMBER   ORDERS.ORD_NUMBER%TYPE;
@@ -463,18 +463,18 @@ V_ARRIVAL_DATE TRANSPORT_TIME_TABLE.ARRIVAL_DATE%TYPE;
 V_SHIP_DEF     SHIPS.DEF%TYPE;
 V_ORD_NAMER    ORDERS.INTERNAL_NUMBER%TYPE;
 V_DATE_PLAN    order_ways.DATE_PLAN%TYPE;
-V_SKLAD        stores.def%TYPE;  -- СЃРєР»Р°Рґ
-V_gruz_po_zayavke FREIGHTS.def%TYPE; -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РіСЂСѓР·Р°
-V_CAR_NUMBER_C   CARS.STATE_NUMBER%TYPE;  --<РЅРѕРјРµСЂ Р°РІС‚Рѕ Рє РєР»РёРµРЅС‚Сѓ>
-V_DRIVER_NAME_C  CMRS.DRIVER_NAME%TYPE; -- <С„Р°РјРёР»РёСЏ Рє РєР»РёРµРЅС‚Сѓ>
-V_DRIVER_PHONE_C CMRS.DRIVER_PHONE%TYPE; --<С‚РµР»РµС„РѕРЅ Рє РєР»РёРµРЅС‚Сѓ>
-V_DATE_C         CMRS.PORT_OUT%TYPE; --<РґР°С‚Р° СѓР±С‹С‚РёСЏ Рє РєР»РёРµРЅС‚Сѓ>
-V_DATE_POD date;   -- <РґР°С‚Р° РїРѕРґР°С‡Рё>
+V_SKLAD        stores.def%TYPE;  -- склад
+V_gruz_po_zayavke FREIGHTS.def%TYPE; -- Наименование груза
+V_CAR_NUMBER_C   CARS.STATE_NUMBER%TYPE;  --<номер авто к клиенту>
+V_DRIVER_NAME_C  CMRS.DRIVER_NAME%TYPE; -- <фамилия к клиенту>
+V_DRIVER_PHONE_C CMRS.DRIVER_PHONE%TYPE; --<телефон к клиенту>
+V_DATE_C         CMRS.PORT_OUT%TYPE; --<дата убытия к клиенту>
+V_DATE_POD date;   -- <дата подачи>
 i number;
 SKLAD varchar2(200);
 BEGIN
    V_MSG_INFO:=P_MESSAGE_TEXT;
-   IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° Р·Р°РєР°Р·Р°>') > 0) OR (INSTR(V_MSG_INFO, '<РЅРѕРјРµСЂ Р·Р°РєР°Р·Р°>') > 0) THEN
+   IF (INSTR(V_MSG_INFO, '<дата заказа>') > 0) OR (INSTR(V_MSG_INFO, '<номер заказа>') > 0) THEN
       BEGIN
         SELECT O.ORD_DATE, O.ORD_NUMBER
           INTO V_ORD_DATE, V_ORD_NUMBER
@@ -487,7 +487,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° РІС‹РїСѓСЃРєР° Р“РўР”>') > 0)  THEN
+    IF (INSTR(V_MSG_INFO, '<дата выпуска ГТД>') > 0)  THEN
        BEGIN
           select date_out
             INTO V_DATE_OUT_GTD
@@ -499,7 +499,7 @@ BEGIN
        END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° РѕС‚РіСЂСѓР·РєРё>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<дата отгрузки>') > 0) THEN
       BEGIN
          SELECT OW.DATE_IN
            INTO V_DATE_IN
@@ -514,7 +514,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° РІС‹РіСЂСѓР·РєРё>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<дата выгрузки>') > 0) THEN
       BEGIN
          select voch_date
            into V_VOCH_DATE
@@ -526,7 +526,7 @@ BEGIN
       END;
     END IF;
 --
-    IF (INSTR(V_MSG_INFO, '<СЃРєР»Р°Рґ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<склад>') > 0) THEN
       BEGIN
         i:=0;
         SKLAD:='';
@@ -552,10 +552,10 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РЅРѕРјРµСЂ Р°РІС‚Рѕ Рє РєР»РёРµРЅС‚Сѓ>') > 0) OR
-       (INSTR(V_MSG_INFO, '<С„Р°РјРёР»РёСЏ Рє РєР»РёРµРЅС‚Сѓ>') > 0) OR
-       (INSTR(V_MSG_INFO, '<РґР°С‚Р° СѓР±С‹С‚РёСЏ Рє РєР»РёРµРЅС‚Сѓ>') > 0) OR
-       (INSTR(V_MSG_INFO, '<С‚РµР»РµС„РѕРЅ Рє РєР»РёРµРЅС‚Сѓ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<номер авто к клиенту>') > 0) OR
+       (INSTR(V_MSG_INFO, '<фамилия к клиенту>') > 0) OR
+       (INSTR(V_MSG_INFO, '<дата убытия к клиенту>') > 0) OR
+       (INSTR(V_MSG_INFO, '<телефон к клиенту>') > 0) THEN
        BEGIN
           select cr.state_number, c.DRIVER_NAME, c.DRIVER_PHONE, NVL(c.PORT_OUT, C.DATE_OUT)
             INTO V_CAR_NUMBER_C, V_DRIVER_NAME_C, V_DRIVER_PHONE_C, V_DATE_C
@@ -575,7 +575,7 @@ BEGIN
     END IF;
 
 --*********
-    IF (INSTR(V_MSG_INFO, '<РєРѕРЅС‚РµР№РЅРµСЂ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<контейнер>') > 0) THEN
       BEGIN
         SELECT CN.CONT_INDEX || CN.CONT_NUMBER
           INTO V_CONT_NUMBER
@@ -599,15 +599,15 @@ BEGIN
       end if;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РіСЂСѓР·РѕРѕС‚РїСЂР°РІРёС‚РµР»СЊ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<грузоотправитель>') > 0) THEN
       BEGIN
         SELECT CL.SHORT_NAME
           INTO V_SHORT_NAME
           FROM LOADING_PLACES LP, CLIENTS CL
          WHERE LP.ORD_ORD_ID = P_ORD_ID
-           AND LP.SOURCE_TYPE = 0 -- РѕСЃРЅРѕРІРЅРѕРµ РјРµСЃС‚Рѕ РїРѕРіСЂСѓР·РєРё
+           AND LP.SOURCE_TYPE = 0 -- основное место погрузки
            AND LP.SOURCE_CLNT_ID = CL.CLNT_ID(+)
-		   -- РїСЂРѕРІРµСЂРєР° РЅР° СѓРґР°Р»РµРЅРёРµ РїРѕРіСЂСѓР·РєРё
+		   -- проверка на удаление погрузки
 		   and lp.DEL_DATE is null;
       EXCEPTION
         WHEN OTHERS THEN
@@ -615,7 +615,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РіРѕСЂРѕРґ РѕС‚РїСЂР°РІРєРё>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<город отправки>') > 0) THEN
       BEGIN
         SELECT C.DEF
           INTO V_CITY_DEF
@@ -623,7 +623,7 @@ BEGIN
          WHERE LP.ORD_ORD_ID = P_ORD_ID
            AND LP.SOURCE_TYPE = 0
            AND LP.CITY_CITY_ID = C.CITY_ID
-		   -- РїСЂРѕРІРµСЂРєР° РЅР° СѓРґР°Р»РµРЅРёРµ РїРѕРіСЂСѓР·РєРё
+		   -- проверка на удаление погрузки
 		   and lp.DEL_DATE is null;
       EXCEPTION
         WHEN OTHERS THEN
@@ -631,7 +631,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° РїРѕРіСЂСѓР·РєРё>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<дата погрузки>') > 0) THEN
       BEGIN
         SELECT OW.DATE_OUT
           INTO V_DATE_OUT
@@ -645,7 +645,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<СЃСѓРґРЅРѕ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<судно>') > 0) THEN
       BEGIN
         SELECT S.DEF
           INTO V_SHIP_DEF
@@ -661,7 +661,7 @@ BEGIN
            AND KO.KNOR_KNOR_ID = KR.KNOR_ID(+)
            AND KR.KNSM_KNSM_ID = K.KNSM_ID(+)
            AND K.TRSP_TRSP_ID = S.TRSP_ID(+)
-           AND KNSM_TYPE = 2 -- РћРєРµР°РЅСЃРєРёР№
+           AND KNSM_TYPE = 2 -- Океанский
            AND O.ORD_ID = P_ORD_ID
 		   and Trim(S.DEF)<>'';
       EXCEPTION
@@ -675,7 +675,7 @@ BEGIN
                   O.ORD_ID = KO.ORD_ORD_ID(+) AND
                   KO.KNOR_KNOR_ID = KR.KNOR_ID(+) AND
                   KR.KNSM_KNSM_ID = K.KNSM_ID(+) AND
-          				--and k.IS_CUSTOM=1  -- Р•СЃС‚СЊ РѕС‚РјРµС‚РєР° С‚Р°РјРѕР¶РЅРё
+          				--and k.IS_CUSTOM=1  -- Есть отметка таможни
 				          K.TRSP_TRSP_ID = S.TRSP_ID(+) AND
                   k.tmtb_tmtb_id    = tt.tmtb_id(+) AND
                   tt.trsp_trsp_id   = s_f.trsp_id(+) AND
@@ -695,7 +695,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РїРѕСЂС‚ РїСЂРёР±С‹С‚РёСЏ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<порт прибытия>') > 0) THEN
       BEGIN
          select def  pod_port_id_
            INTO V_PORT_DEF
@@ -712,7 +712,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РіРѕСЂРѕРґ РїСЂРёР±С‹С‚РёСЏ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<город прибытия>') > 0) THEN
       BEGIN
          select def  city_pod_id_
            INTO V_CITY_DEF_POD
@@ -730,7 +730,7 @@ BEGIN
     END IF;
 
 
-    IF (INSTR(V_MSG_INFO, '<РѕР¶РёРґР°РµРјР°СЏ РґР°С‚Р°>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<ожидаемая дата>') > 0) THEN
       BEGIN
         SELECT NVL(KO.ETA_DATE, K.ETA_DATE)
           INTO V_ETA_DATE
@@ -746,7 +746,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° РїСЂРёР±С‹С‚РёСЏ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<дата прибытия>') > 0) THEN
       BEGIN
         SELECT TT.ARRIVAL_DATE
           INTO V_ARRIVAL_DATE
@@ -767,7 +767,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° СѓР±С‹С‚РёСЏ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<дата убытия>') > 0) THEN
       BEGIN
          select TO_CHAR(CM.PORT_OUT, 'DD.MM.YYYY HH24:MI:SS'), CM.PORT_OUT -- cmrs.PORT_OUT
            into V_PORT_OUT, V_PORT_OUT_df
@@ -789,9 +789,9 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РЅРѕРјРµСЂ Р°РІС‚Рѕ>') > 0) OR
-       (INSTR(V_MSG_INFO, '<С„Р°РјРёР»РёСЏ>') > 0) OR
-       (INSTR(V_MSG_INFO, '<С‚РµР»РµС„РѕРЅ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<номер авто>') > 0) OR
+       (INSTR(V_MSG_INFO, '<фамилия>') > 0) OR
+       (INSTR(V_MSG_INFO, '<телефон>') > 0) THEN
       BEGIN
          select cr.state_number, cm.driver_name, cm.driver_phone
            into V_CAR_NUMBER, V_DRIVER_NAME, V_DRIVER_PHONE
@@ -815,11 +815,11 @@ BEGIN
       END;
     END IF;
 
-    -- РџСЂРѕРІРµСЂРєР°, РµСЃС‚СЊ С‚Р°РєР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ
-    IF (INSTR(V_MSG_INFO, '<РІРЅСѓС‚СЂРµРЅРЅРёР№ РЅРѕРјРµСЂ Р·Р°РєР°Р·Р°>') > 0) THEN
+    -- Проверка, есть такая переменная
+    IF (INSTR(V_MSG_INFO, '<внутренний номер заказа>') > 0) THEN
       BEGIN
 	    	 select INTERNAL_NUMBER
-   		     INTO V_ORD_NAMER  -- РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р·РЅР°С‡РµРЅРёРµ
+   		     INTO V_ORD_NAMER  -- Устанавливаем значение
 		       From orders o
 		      where O.ORD_ID=P_ORD_ID;
       EXCEPTION
@@ -828,7 +828,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РґР°С‚Р° РїРѕРґР°С‡Рё>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<дата подачи>') > 0) THEN
       BEGIN
          select CP.GTD_DATE
   		     into V_DATE_POD
@@ -840,13 +840,13 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РїР»Р°РЅРёСЂСѓРµРјР°СЏ РґР°С‚Р° РїСЂРёР±С‹С‚РёСЏ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<планируемая дата прибытия>') > 0) THEN
       BEGIN
 	       Select Decode(
 	              Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))
 	              ,'0',null,
 	              Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))) DT
-	         INTO V_DATE_PLAN  -- РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј Р·РЅР°С‡РµРЅРёРµ
+	         INTO V_DATE_PLAN  -- Устанавливаем значение
 		       From (select (select MAX(tt.eta_date) DT
 		                       FROM transport_time_table tt
 		                      where tt.tmtb_id in (select k.tmtb_tmtb_id
@@ -858,7 +858,7 @@ BEGIN
                                                                      group by ko.knsm_knsm_id) AND
                                                       k.del_user is Null and
                                                       k.TMTB_TMTB_ID is not null)) DT1,
-					              -- РІС‹Р±РёСЂР°РµРј РћРєРµР°РЅСЃРєРёР№ РєРѕРЅРѕСЃР°РјРµРЅС‚
+					              -- выбираем Океанский коносамент
 					              (select  MAX(k.ETA_DATE) DT
 	 				                 FROM konosaments k
 					                WHERE k.knsm_id in (select ko.knsm_knsm_id
@@ -867,7 +867,7 @@ BEGIN
                                                      kd.knor_knor_id = ko.knor_id
                                                group by ko.knsm_knsm_id) and
                                 k.KNSM_TYPE=2) DT2,
-					              -- РР· РёСЃС‚РѕСЂРёРё
+					              -- Из истории
 					              (select ow.DATE_PLAN From order_ways ow where ow.ord_ord_id = P_ORD_ID and rownum=1) DT3
 		               From dual);
       EXCEPTION
@@ -876,7 +876,7 @@ BEGIN
       END;
     END IF;
 
-    IF (INSTR(V_MSG_INFO, '<РіСЂСѓР· РїРѕ Р·Р°СЏРІРєРµ>') > 0) THEN
+    IF (INSTR(V_MSG_INFO, '<груз по заявке>') > 0) THEN
       BEGIN
      select FREIGHTS.def
        into V_gruz_po_zayavke
@@ -893,34 +893,34 @@ BEGIN
     END IF;
 
 
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РЅРѕРјРµСЂ Р·Р°РєР°Р·Р°>',V_ORD_NUMBER);
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° Р·Р°РєР°Р·Р°>', NVL(TO_CHAR(V_ORD_DATE,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° РІС‹РїСѓСЃРєР° Р“РўР”>', NVL(TO_CHAR(V_DATE_OUT_GTD,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° РѕС‚РіСЂСѓР·РєРё>', NVL(TO_CHAR(V_DATE_IN,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° РІС‹РіСЂСѓР·РєРё>',NVL(TO_CHAR(V_VOCH_DATE,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РєРѕРЅС‚РµР№РЅРµСЂ>', NVL(V_CONT_NUMBER, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РіСЂСѓР·РѕРѕС‚РїСЂР°РІРёС‚РµР»СЊ>',NVL(V_SHORT_NAME, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РіРѕСЂРѕРґ РѕС‚РїСЂР°РІРєРё>',V_CITY_DEF);
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° РїРѕРіСЂСѓР·РєРё>',NVL(TO_CHAR(V_DATE_OUT,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<СЃСѓРґРЅРѕ>',NVL(V_SHIP_DEF, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РїРѕСЂС‚ РїСЂРёР±С‹С‚РёСЏ>',V_PORT_DEF);
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РіРѕСЂРѕРґ РїСЂРёР±С‹С‚РёСЏ>',V_CITY_DEF_POD);
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РѕР¶РёРґР°РµРјР°СЏ РґР°С‚Р°>',NVL(TO_CHAR(V_ETA_DATE,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° РїСЂРёР±С‹С‚РёСЏ>',NVL(TO_CHAR(V_ARRIVAL_DATE,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РґР°С‚Р° СѓР±С‹С‚РёСЏ>', NVL(TO_CHAR(V_PORT_OUT_df,'dd.mm.yyyy'), 'N/A')); -- used to be V_PORT_OUT
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<РЅРѕРјРµСЂ Р°РІС‚Рѕ>', NVL(V_CAR_NUMBER, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<С„Р°РјРёР»РёСЏ>', NVL(V_DRIVER_NAME, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO, '<С‚РµР»РµС„РѕРЅ>', NVL(V_DRIVER_PHONE, 'N/A'));
-    --Р—Р°РјРµРЅР° С‚РµРєСЃС‚Р°
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<РІРЅСѓС‚СЂРµРЅРЅРёР№ РЅРѕРјРµСЂ Р·Р°РєР°Р·Р°>',NVL(V_ORD_NAMER, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<РїР»Р°РЅРёСЂСѓРµРјР°СЏ РґР°С‚Р° РїСЂРёР±С‹С‚РёСЏ>',NVL(TO_CHAR(V_DATE_PLAN,'dd.mm.yyyy'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<СЃРєР»Р°Рґ>',NVL(V_SKLAD, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<РЅРѕРјРµСЂ Р°РІС‚Рѕ Рє РєР»РёРµРЅС‚Сѓ>',NVL(V_CAR_NUMBER_C, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<С„Р°РјРёР»РёСЏ Рє РєР»РёРµРЅС‚Сѓ>',NVL( V_DRIVER_NAME_C, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<РґР°С‚Р° СѓР±С‹С‚РёСЏ Рє РєР»РёРµРЅС‚Сѓ>',NVL(TO_CHAR(V_DATE_C, 'DD.MM.YYYY'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<С‚РµР»РµС„РѕРЅ Рє РєР»РёРµРЅС‚Сѓ>',NVL( V_DRIVER_PHONE_C, 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<РґР°С‚Р° РїРѕРґР°С‡Рё>',NVL(TO_CHAR(V_DATE_POD, 'DD.MM.YYYY HH24:MI'), 'N/A'));
-    V_MSG_INFO := REPLACE(V_MSG_INFO,'<РіСЂСѓР· РїРѕ Р·Р°СЏРІРєРµ>',NVL( V_gruz_po_zayavke, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<номер заказа>',V_ORD_NUMBER);
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата заказа>', NVL(TO_CHAR(V_ORD_DATE,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата выпуска ГТД>', NVL(TO_CHAR(V_DATE_OUT_GTD,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата отгрузки>', NVL(TO_CHAR(V_DATE_IN,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата выгрузки>',NVL(TO_CHAR(V_VOCH_DATE,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<контейнер>', NVL(V_CONT_NUMBER, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<грузоотправитель>',NVL(V_SHORT_NAME, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<город отправки>',V_CITY_DEF);
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата погрузки>',NVL(TO_CHAR(V_DATE_OUT,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<судно>',NVL(V_SHIP_DEF, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<порт прибытия>',V_PORT_DEF);
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<город прибытия>',V_CITY_DEF_POD);
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<ожидаемая дата>',NVL(TO_CHAR(V_ETA_DATE,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата прибытия>',NVL(TO_CHAR(V_ARRIVAL_DATE,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата убытия>', NVL(TO_CHAR(V_PORT_OUT_df,'dd.mm.yyyy'), 'N/A')); -- used to be V_PORT_OUT
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<номер авто>', NVL(V_CAR_NUMBER, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<фамилия>', NVL(V_DRIVER_NAME, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<телефон>', NVL(V_DRIVER_PHONE, 'N/A'));
+    --Замена текста
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<внутренний номер заказа>',NVL(V_ORD_NAMER, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<планируемая дата прибытия>',NVL(TO_CHAR(V_DATE_PLAN,'dd.mm.yyyy'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<склад>',NVL(V_SKLAD, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<номер авто к клиенту>',NVL(V_CAR_NUMBER_C, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<фамилия к клиенту>',NVL( V_DRIVER_NAME_C, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<дата убытия к клиенту>',NVL(TO_CHAR(V_DATE_C, 'DD.MM.YYYY'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<телефон к клиенту>',NVL( V_DRIVER_PHONE_C, 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<дата подачи>',NVL(TO_CHAR(V_DATE_POD, 'DD.MM.YYYY HH24:MI'), 'N/A'));
+    V_MSG_INFO := REPLACE(V_MSG_INFO,'<груз по заявке>',NVL( V_gruz_po_zayavke, 'N/A'));
 
 
 RETURN V_MSG_INFO;
@@ -929,21 +929,21 @@ EXCEPTION
     RETURN 0;
 end;
 
-PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type,        -- РљРѕРґ СЃС‚Р°С‚СѓСЃР°
-                      P_ORD_ORD_ID ORDERS.ORD_ID%type,              -- РљРѕРґ Р·Р°РєР°Р·Р°
-                      P_orst_tmms orders.stop_order%type default 0 -- Р•СЃР»Рё P_orst_tmms = 0 С‚Рѕ РїРµСЂРµРґР°Р»Рё ORST_ID, Р° РµСЃР»Рё P_orst_tmms = 1 С‚Рѕ РїРµСЂРµРґР°Р»Рё TM_ID
+PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type,        -- Код статуса
+                      P_ORD_ORD_ID ORDERS.ORD_ID%type,              -- Код заказа
+                      P_orst_tmms orders.stop_order%type default 0 -- Если P_orst_tmms = 0 то передали ORST_ID, а если P_orst_tmms = 1 то передали TM_ID
 					 ) IS
 V_clnt_clnt_id number := null;
 V_HOLD_HOLD_ID number := null;
 V_MESSAGE_TEXT varchar2(2000);
-V_STORE_DAYS NUMBER;  -- РЎСЂРѕРє С…СЂР°РЅРµРЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ
+V_STORE_DAYS NUMBER;  -- Срок хранения сообщения
 NN number;
 clnt_id_to_be_processed client_requests.clnt_clnt_id%type := 0;
 V_is_order TEMPLATES_MESSAGES_DIC.is_order%type;
 V_clrq_clrq_id messages2customers.clrq_clrq_id%type := null ;
 NN_clrq_clrq_id number :=0;
 BEGIN
-   -- РџСЂРѕРІРµСЂРєР° РїРѕРґРїРёСЃРєРё РљР»РёРµРЅС‚Р° РЅР° СЃРѕР±С‹С‚РёРµ
+   -- Проверка подписки Клиента на событие
    if P_orst_tmms = 0 then
       select count(ms.clnt_clnt_id||ms.tm_tm_id)
         into clnt_id_to_be_processed
@@ -969,52 +969,52 @@ BEGIN
    end if;
 
    if clnt_id_to_be_processed > 0 then
-      -- РљР»РёРµРЅС‚ РїРѕРґРїРёСЃР°РЅ РЅР° СЃРѕР±С‹С‚РёРµ
-      -- РџСЂРѕРІРµСЂРєР° РЅР° РІРІРѕРґ
+      -- Клиент подписан на событие
+      -- Проверка на ввод
       IF (trim(P_ORST_ID) IS NULL) THEN
-         RaiseError('РќРµ СѓРєР°Р·Р°Р»Рё СЃС‚Р°С‚СѓСЃ!!!');
+         RaiseError('Не указали статус!!!');
       END IF;
       IF (trim(P_ORD_ORD_ID) IS NULL) THEN
-         RaiseError('РќРµ СѓРєР°Р·Р°Р»Рё Р·Р°РєР°Р·!!!');
+         RaiseError('Не указали заказ!!!');
       END IF;
-      -- РџСЂРѕРІРµСЂРєР° РЅР° СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ С€Р°Р±Р»РѕРЅР°
+      -- Проверка на существование шаблона
       Begin
          if P_orst_tmms = 0 then
             select TM.MESSAGES_TEXT, TM.STORE_DAYS, TM.is_order
-              INTO V_MESSAGE_TEXT, V_STORE_DAYS, V_is_order   -- РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ Рё СЃСЂРѕРє
+              INTO V_MESSAGE_TEXT, V_STORE_DAYS, V_is_order   -- Текст сообщения и срок
               from ORDER_STATUSES OS, TEMPLATES_MESSAGES TM
              where OS.ORST_ID=P_ORST_ID and
                    TM.DEL_DATE is null and  OS.TM_TM_ID=TM.TM_ID;
          elsif P_orst_tmms = 1 then
             select TM.MESSAGES_TEXT, TM.STORE_DAYS, TM.is_order
-              INTO V_MESSAGE_TEXT, V_STORE_DAYS, V_is_order   -- РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ Рё СЃСЂРѕРє
+              INTO V_MESSAGE_TEXT, V_STORE_DAYS, V_is_order   -- Текст сообщения и срок
               from TEMPLATES_MESSAGES TM
              where TM.DEL_DATE is null and TM.TM_ID=P_ORST_ID;
        end if;
-       -- РџСЂРѕРІРµСЂРєР° РЅР° РїРѕРІС‚РѕСЂ СЃРѕРѕР±С‰РµРЅРёСЏ
+       -- Проверка на повтор сообщения
        select Count(*) into nn
          from messages2customers MC
         where ord_ord_id = P_ORD_ORD_ID and
               event_id=P_ORST_ID;
        -- 04/05/2016
-       -- РЈР±РёСЂР°РµРј Р»РёС€РЅРёРµ РѕС‚Р»Р°РґРѕС‡РЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ
+       -- Убираем лишние отладочные сообщения
        --if nn > 0 then
-         -- RaiseError('CРѕР±С‹С‚РёРµ ' || P_ORST_ID || ' Сѓ Р·Р°РєР°Р·Р°' || P_ORD_ORD_ID || ' СѓР¶Рµ Р±С‹Р»Рѕ!!!');
+         -- RaiseError('Cобытие ' || P_ORST_ID || ' у заказа' || P_ORD_ORD_ID || ' уже было!!!');
        --else
        if nn = 0 then
           if (P_ORST_ID=1 and V_is_order=1) then
-             -- РџСЂРµРґРІР°СЂРёС‚РµР»СЊРЅР°СЏ Р·Р°СЏРІРєР° РЎРѕР±С‹С‚РёРµ РїРѕ Р·Р°РєР°Р·Сѓ
+             -- Предварительная заявка Событие по заказу
              select count( MC.clrq_clrq_id)
-               into NN_clrq_clrq_id -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°СЏРІРѕРє РљР»РёРµРЅС‚РѕРІ РїРѕ С‚РµРєСѓС‰РµРјСѓ Р·Р°РєР°Р·Сѓ
+               into NN_clrq_clrq_id -- количество заявок Клиентов по текущему заказу
                from clrq_orders co, messages2customers MC
               where co.clrq_clrq_id = MC.clrq_clrq_id and
                     co.ord_ord_id   = P_ORD_ORD_ID and
                     MC.Event_Id=P_ORST_ID;
              if NN_clrq_clrq_id = 0 then
-                -- СЃРѕРѕР±С‰РµРЅРёР№ РїРѕ Р·Р°РєР°Р·Сѓ РµС‰Рµ РЅРµ Р±С‹Р»Рѕ
+                -- сообщений по заказу еще не было
                 begin
                   select distinct co.clrq_clrq_id
-                    into V_clrq_clrq_id -- РІС‹Р±РѕСЂ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂР° Р·Р°СЏРІРєРё РљР»РёРµРЅС‚Р°
+                    into V_clrq_clrq_id -- выбор идентификатора заявки Клиента
                     from clrq_orders co, client_requests cr
                    where co.clrq_clrq_id = cr.clrq_id and
                          co.ord_ord_id   = P_ORD_ORD_ID;
@@ -1024,13 +1024,13 @@ BEGIN
                 end;
              end if;
           end if;
-          -- РћРїСЂРµРґРµР»СЏРµРј Рє РєР°РєРѕРјСѓ  РҐРѕР»РґРёРЅРіСѓ РїСЂРёРЅР°РґР»РµР¶РёС‚ РљР»РёРµРЅС‚
+          -- Определяем к какому  Холдингу принадлежит Клиент
           select value_string
             into V_HOLD_HOLD_ID
             from app_parameters_dic
            where prmt_id=4;
           if (P_ORST_ID=1 and V_is_order=1 and NN_clrq_clrq_id>=1 ) then
-             -- Р•СЃР»Рё С‚РёРї СЃРѕР±С‹С‚РёСЏ "РџСЂРµРґРІР°СЂРёС‚РµР»СЊРЅР°СЏ Р·Р°СЏРІРєР°", РЅРѕ РѕРЅРѕ РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє Р—РђРљРђР—РЈ, Р° РЅРµ Рє Р·Р°СЏРІРєРµ, С‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ С„РѕСЂРјРёСЂРѕРІР°С‚СЊ РЅРµ РЅР°РґРѕ
+             -- Если тип события "Предварительная заявка", но оно относится к ЗАКАЗУ, а не к заявке, то сообщение формировать не надо
              -- ins_sys_logs(ApplId=>ApplId,Message=>'NOT ins P_ORST_ID='||P_ORST_ID||' V_is_order='||V_is_order||' NN_clrq_clrq_id>='||NN_clrq_clrq_id||' P_ORD_ORD_ID='||P_ORD_ORD_ID||' V_clrq_clrq_id='||V_clrq_clrq_id, IsCommit=>False);
              null;
           else
@@ -1052,20 +1052,20 @@ BEGIN
        end if; -- if nn=0 then
     EXCEPTION
        WHEN OTHERS THEN
-          RaiseError('РљРѕРґ РѕС€РёР±РєРё '  || SQLERRM ||' Р—Р°РєР°Р· = '||P_ORD_ORD_ID);
+          RaiseError('Код ошибки '  || SQLERRM ||' Заказ = '||P_ORD_ORD_ID);
     end;
-end if; -- РљР»РёРµРЅС‚ РїРѕРґРїРёСЃР°РЅ РЅР° СЃРѕР±С‹С‚РёРµ
+end if; -- Клиент подписан на событие
 EXCEPTION
   WHEN OTHERS THEN
     HandleError(SQLCODE, SQLERRM, 'ADD_Message');
 END;
 
--- РћР±СЂР°Р±РѕС‚РєР° СЃРѕРѕР±С‰РµРЅРёСЏ
-PROCEDURE EXE_Message(P_MSCM_ID MESSAGES2CUSTOMERS.MSCM_ID%type,  -- РљРѕРґ СЃРѕРѕР±С‰РµРЅРёСЏ
-                      P_message_text OUT MESSAGES2CUSTOMERS.message_text%type,  -- РўРµРєСЃ СЃРѕРѕР±С‰РµРЅРёСЏ
-			          		  P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- РђРґСЂРµСЃ РѕС‚РїСЂР°РІРёС‚РµР»СЏ
-					            P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- РҐРѕР»РґРёРЅРі
-					            P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- РљР»РёРµРЅС‚
+-- Обработка сообщения
+PROCEDURE EXE_Message(P_MSCM_ID MESSAGES2CUSTOMERS.MSCM_ID%type,  -- Код сообщения
+                      P_message_text OUT MESSAGES2CUSTOMERS.message_text%type,  -- Текс сообщения
+			          		  P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- Адрес отправителя
+					            P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- Холдинг
+					            P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- Клиент
                       P_orst_tmms MESSAGES2CUSTOMERS.orst_tmms%type         ,
                       P_tm_ms_def OUT templates_messages.def%type ) IS
 V_ORD_ID ORDERS.ORD_ID%type;
@@ -1073,7 +1073,7 @@ begin
   Begin
      if P_orst_tmms = 0 then
         select MC.ORD_ORD_ID, TM.MESSAGES_TEXT, tm.def
-          INTO V_ORD_ID,P_message_text, P_tm_ms_def  -- РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ Рё СЃСЂРѕРє
+          INTO V_ORD_ID,P_message_text, P_tm_ms_def  -- Текст сообщения и срок
           from ORDER_STATUSES OS, TEMPLATES_MESSAGES TM, MESSAGES2CUSTOMERS MC
          where MC.MSCM_ID=P_MSCM_ID AND
                OS.ORST_ID=MC.EVENT_ID and
@@ -1081,7 +1081,7 @@ begin
                OS.TM_TM_ID=TM.TM_ID;
      elsif  P_orst_tmms = 1 then
         select MC.ORD_ORD_ID, TM.MESSAGES_TEXT, tm.def
-          INTO V_ORD_ID,P_message_text, P_tm_ms_def   -- РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ Рё СЃСЂРѕРє
+          INTO V_ORD_ID,P_message_text, P_tm_ms_def   -- Текст сообщения и срок
           from TEMPLATES_MESSAGES TM, MESSAGES2CUSTOMERS MC
          where MC.MSCM_ID=P_MSCM_ID AND
                MC.EVENT_ID = TM.TM_ID and
@@ -1089,12 +1089,12 @@ begin
      end if;
   EXCEPTION
     WHEN OTHERS THEN
-       ins_sys_logs(ApplId=>ApplId,Message=>'РќРµ СЂР°Р±РѕС‚Р°РµС‚ РІС‹Р±РѕСЂРєР° РёР· ORDER_STATUSES OS, TEMPLATES_MESSAGES TM, MESSAGES2CUSTOMERS MC, P_MSCM_ID='||P_MSCM_ID||' P_CLNT_CLNT_ID='||P_CLNT_CLNT_ID, IsCommit=>True);
+       ins_sys_logs(ApplId=>ApplId,Message=>'Не работает выборка из ORDER_STATUSES OS, TEMPLATES_MESSAGES TM, MESSAGES2CUSTOMERS MC, P_MSCM_ID='||P_MSCM_ID||' P_CLNT_CLNT_ID='||P_CLNT_CLNT_ID, IsCommit=>True);
   end;
   /*
-  -- РџСЂРѕРІРµСЂРєР° РЅР° СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
+  -- Проверка на существование почтового ящика
   SELECT CL.EMAIL, O.CLNT_CLNT_ID
-    INTO P_send_to, P_CLNT_CLNT_ID  -- РџРѕС‡С‚Р° , РєР»РёРµРЅС‚
+    INTO P_send_to, P_CLNT_CLNT_ID  -- Почта , клиент
     FROM CLIENT_CONTACTS CL, ORDERS O
    WHERE O.ORD_ID = V_ORD_ID
      AND CL.CLCN_ID(+) = O.CLCN_CLCN_ID;
@@ -1108,16 +1108,16 @@ begin
             C.DEL_DATE is null;
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
-	      RaiseError('Р’РѕР·РјРѕР¶РЅРѕ Сѓ Р·Р°РєР°Р·Р° РєР»РёРµРЅС‚ РїРѕРјРµС‡РµРЅ РЅР° СѓРґР°Р»РµРЅРёРµ!! V_ORD_ID='||V_ORD_ID);
+	      RaiseError('Возможно у заказа клиент помечен на удаление!! V_ORD_ID='||V_ORD_ID);
   end;
   IF (trim(P_HOLD_HOLD_ID) IS NULL) THEN
-     RaiseError('РЈ РєР»РёРµРЅС‚Р° РЅРµС‚ С…РѕР»РґРёРЅРіР°!!!');
+     RaiseError('У клиента нет холдинга!!!');
   END IF;
-  -- Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ С‚РµРєСЃС‚Р° СЃРѕРѕР±С‰РµРЅРёСЏ Рё РµРіРѕ С‚РµРјС‹
+  -- Формирование текста сообщения и его темы
   P_MESSAGE_TEXT:=SET_VALUES_MESSAGES(V_ORD_ID, P_MESSAGE_TEXT);
   P_tm_ms_def:=rtrim(Substr(SET_VALUES_MESSAGES(V_ORD_ID, P_tm_ms_def),1,199));
 
-  -- РћС‚РїСЂР°РІР»СЏС‚СЊ РїРёСЃСЊРјРѕ РёР»Рё РЅРµС‚
+  -- Отправлять письмо или нет
   if INSTR(LOWER(P_MESSAGE_TEXT),LOWER('N/A<NOT>'))<>0 then
       P_MESSAGE_TEXT:='NOT';
 	end if;
@@ -1125,7 +1125,7 @@ begin
   if P_MESSAGE_TEXT<>'NOT' then
      P_MESSAGE_TEXT:=REPLACE(P_MESSAGE_TEXT,'<NOT>','');
   end if;
-   -- РћС‡РёСЃС‚РєР° РѕС‚ РЅРµРЅСѓР¶РЅС‹С… РўР­Р“РћР’
+   -- Очистка от ненужных ТЭГОВ
   if P_MESSAGE_TEXT<>'NOT' then
      P_MESSAGE_TEXT:=READ_BODY_MSG_F(P_MESSAGE_TEXT);
    end if;
@@ -1141,10 +1141,10 @@ str3 VARCHAR2(32000);
 ss varchar2(2000);
 tmpVar varchar2(5);
 BEGIN
--- РџРѕР»СѓС‡РёР»Рё СЃС‚СЂРѕРєСѓ
+-- Получили строку
   STR:=P_MESSAGE_TEXT;
   str2:=str;
-	-- РџСЂРѕРІРµСЂРєР° - РѕС‚РїСЂР°РІР»СЏС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ РёР»Рё РЅРµС‚
+	-- Проверка - отправлять сообщение или нет
     if INSTR(LOWER(str),LOWER('N/A<NOT>'))=0 then
      tmpVar:='1';
 	end if;
@@ -1154,28 +1154,28 @@ BEGIN
     str1:=SUBSTR(str2,INSTR(str2,'<b>'),INSTR(str2,'</b>')-INSTR(str2,'<b>')+4);
 --
     if (INSTR(str1,'<b>')+INSTR(str1,'</b>'))>=2 Then
--- РџСЂРѕРІРµСЂРєР°
+-- Проверка
       if INSTR(str1,'N/A&')>=1 then
--- РіР»Р°РІРЅР°СЏ РїРµСЂРµРјРµРЅРЅР°СЏ РїСѓСЃС‚Р°СЏ
+-- главная переменная пустая
          str:=REPLACE(str,str1,'');
       else
--- РІС‹РІРѕРґРј РІСЃРµ РєР°Рє РµСЃС‚СЊ
+-- выводм все как есть
          ss:=SUBSTR(str1,INSTR(str1,'<b>')+3,INSTR(str1,'</b>')-4);
--- Р—Р°РјРµРЅР°
+-- Замена
          str:=REPLACE(str,str1,ss);
       end if;
--- Р—Р°РїРёСЃСЊ РґР»СЏ С‚РµСЃС‚Р°
+-- Запись для теста
     end if;
--- РџСЂРѕРІРµСЂРєР° РЅР° РїСЂРµРІС‹С€РµРЅРёРµ СЃС‚СЂРѕРєРё
+-- Проверка на превышение строки
     if INSTR(str2,'</b>')+4>LENGTH(str2) Then EXIT; end if;
--- РџСЂРѕРІРµСЂРєР° РЅР° null
+-- Проверка на null
     if NVL(LENGTH(str2),0)=0 Then EXIT; end if;
     str2:=SUBSTR(str2,INSTR(str2,'</b>')+4,LENGTH(str2));
--- Р•СЃР»Рё Р±Р»РѕРєРѕРІ Р±РѕР»СЊС€Рµ РЅРµС‚
+-- Если блоков больше нет
     if (INSTR(str2,'<b>')+INSTR(str2,'</b>'))<2 Then Exit; end if;
   end LOOP;
   IF NVL(LENGTH(STR),0)<>0 Then
--- РћР±РЅРѕРІР»РµРЅРёРµ РІ Р±Р°Р·Рµ
+-- Обновление в базе
 	str:=REPLACE(str,'&','');
 	str:=REPLACE(str,'<b>','');
 	str:=REPLACE(str,'</b>','');
@@ -1187,7 +1187,7 @@ BEGIN
 END ;
 
 
--- РћС‚РїСЂР°РІРєР° СЃРѕРѕР±С‰РµРЅРёР№, РєРѕС‚РѕСЂС‹Рµ РЅРµ РѕС‚РїСЂР°РІР»РµРЅРЅС‹
+-- Отправка сообщений, которые не отправленны
 PROCEDURE SendMessageToMail IS
   V_message_text MESSAGES2CUSTOMERS.message_text%type;
   V_send_to MESSAGES2CUSTOMERS.send_to%type;
@@ -1209,13 +1209,13 @@ begin
                        SBC_MESSAGE.emails2line(o.ORD_ID) cl_Email , row_number() over(order by MC.message_date) nn
                   from messages2customers MC, orders o, CLIENT_CONTACTS CL
                  where mc.ORD_ORD_ID=o.ORD_ID AND CL.CLCN_ID(+) = O.CLCN_CLCN_ID and
-                       MC.send_date is null and  -- РџРёСЃСЊРјРѕ РЅРµ РѕС‚РїСЂР°РІР»РµРЅРЅРѕ
-                       MC.send_to is not null and -- РќРµС‚ РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
-                       (MC.message_date+MC.STORE_DAYS) > sysdate and   -- РљРѕР»РёС‡РµСЃС‚РІРѕ РґРЅРµР№ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ
+                       MC.send_date is null and  -- Письмо не отправленно
+                       MC.send_to is not null and -- Нет почтового ящика
+                       (MC.message_date+MC.STORE_DAYS) > sysdate and   -- Количество дней отправки сообщения
                        UPPER(MC.message_text)<> 'NOT' and
                        EVENT_ID not in (12009,12008) and
                        (((select COMPLETE_DATE From orders where ORD_ID=MC.ord_ord_id) is null) OR
-                       ((select COMPLETE_DATE From orders where ORD_ID=MC.ord_ord_id)>sysdate)) and  -- Р—Р°РєР°Р· РЅРµ Р·Р°РєСЂС‹С‚ (РґР°С‚Р° С„Р°РєС‚РёС‡РµСЃРєРѕРіРѕ Р·Р°РІРµСЂС€РµРЅРёСЏ Р·Р°РєР°Р·Р°)
+                       ((select COMPLETE_DATE From orders where ORD_ID=MC.ord_ord_id)>sysdate)) and  -- Заказ не закрыт (дата фактического завершения заказа)
            			       NOT((MC.SEND_TO='message_text') and (Trim(CL.Email) is null))
                  order by MC.message_date)
                  where nn<100) loop
@@ -1234,7 +1234,7 @@ begin
          V_tm_ms_def := DAN.message_thema;
          V_HOLD_HOLD_ID := DAN.HOLD_HOLD_ID;
 
-         -- РћР±СЂР°Р±РѕС‚Р°С‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ РµСЃР»Рё РЅРµ РѕР±СЂР°Р±РѕС‚Р°РЅРЅРѕ
+         -- Обработать сообщение если не обработанно
 	       if (V_message_text='message_text') or (V_send_to='message_text') then
             Begin
 	             EXE_Message(P_MSCM_ID=>Dan.MSCM_ID,
@@ -1246,11 +1246,11 @@ begin
                            P_tm_ms_def=>V_tm_ms_def);
             EXCEPTION
                WHEN OTHERS THEN
-                  ins_sys_logs_autonomous(ApplId => 21,Message => SQLERRM||' РћС€РёР±РєР° СЂР°Р±РѕС‚С‹ EXE_Message РїСЂРѕС†РµРґСѓСЂС‹ РїРѕ MSCM_ID='||Dan.MSCM_ID,LogDate => sysdate);
+                  ins_sys_logs_autonomous(ApplId => 21,Message => SQLERRM||' Ошибка работы EXE_Message процедуры по MSCM_ID='||Dan.MSCM_ID,LogDate => sysdate);
             end;
          end if;
 
--- Р•СЃР»Рё Сѓ СЃРѕРѕР±С‰РµРЅРёСЏ РЅРµ РїСЂРѕСЃС‚Р°РІР»РµРЅ РєР»РёРµС‚ С‚Рѕ РїСЂРѕСЃС‚Р°РІР»СЏРµРј
+-- Если у сообщения не проставлен клиет то проставляем
   if (trim(V_CLNT_CLNT_ID) IS NULL) THEN V_CLNT_CLNT_ID:=CL_ID; end if;
   if (trim(V_send_to) IS NULL) OR (trim(V_send_to)='message_text') THEN V_send_to:=emails_id.e_m; end if;
 
@@ -1268,8 +1268,8 @@ begin
      EXCEPTION
        WHEN OTHERS THEN
           ins_sys_logs_autonomous(ApplId => 21,
-              Message => SQLERRM||' РЅРµ РјРѕР¶РµС‚ СЃРґРµР»Р°С‚СЊ UPDATE messages2customers РїРѕ MSCM_ID='||Dan.MSCM_ID||
-                         ' РЅРѕ РќР• Р’РЎР• РїР°СЂР°РјРµС‚СЂС‹ РѕРїСЂРµРґРµР»РµРЅС‹ send_to='||V_send_to_last||' CLNT_CLNT_ID='||V_CLNT_CLNT_ID||
+              Message => SQLERRM||' не может сделать UPDATE messages2customers по MSCM_ID='||Dan.MSCM_ID||
+                         ' но НЕ ВСЕ параметры определены send_to='||V_send_to_last||' CLNT_CLNT_ID='||V_CLNT_CLNT_ID||
                          ' message_text='||V_message_text||' message_thema='|| V_tm_ms_def,
               LogDate => sysdate);
 	End;
@@ -1278,7 +1278,7 @@ begin
 	if (V_message_text<>'message_text') AND
      (V_send_to<>'message_text')  AND
      (V_message_text<>'NOT')  AND (V_message_text<>'0') Then
-     if SBC_SendMail(p_rcvr_name=>V_fl_name, -- 'РљР»РёРµРЅС‚',
+     if SBC_SendMail(p_rcvr_name=>V_fl_name, -- 'Клиент',
                      p_rcvr_email=>V_send_to,
                      p_subject=>V_tm_ms_def,
                      p_text=>V_message_text)=0 then
@@ -1300,8 +1300,8 @@ begin
         EXCEPTION
           WHEN OTHERS THEN
               ins_sys_logs_autonomous(ApplId => 21,
-              Message => SQLERRM||' РЅРµ РјРѕР¶РµС‚ СЃРґРµР»Р°С‚СЊ UPDATE messages2customers РїРѕ MSCM_ID='||Dan.MSCM_ID||
-                                  ' РЅРѕ РІСЃРµ РїР°СЂР°РјРµС‚СЂС‹ РѕРїСЂРµРґРµР»РµРЅС‹ send_to='||V_send_to_last||
+              Message => SQLERRM||' не может сделать UPDATE messages2customers по MSCM_ID='||Dan.MSCM_ID||
+                                  ' но все параметры определены send_to='||V_send_to_last||
                                   ' CLNT_CLNT_ID='||V_CLNT_CLNT_ID||' message_text='||V_message_text||
                                   ' message_thema='|| V_tm_ms_def,
               LogDate => sysdate);
@@ -1328,11 +1328,11 @@ begin
 EXCEPTION
    WHEN OTHERS THEN
      HandleError(-20001,
-       ' РїСЂРѕС†РµРґСѓСЂР° РєРѕС‚РѕСЂР°СЏ РґРѕР»Р¶РЅР° Р±С‹Р»Р° СѓРґР°Р»РёС‚СЊ СЃС‚Р°СЂС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ РєР»РёРµРЅС‚Р°Рј РёР· С‚Р°Р±Р»РёС†С‹ messages2customers РќР• СЃСЂР°Р±РѕС‚Р°Р»Р° '||rtrim(to_char(sysdate,'dd.mm.yyyy hh24:mi:ss')), 'del_old_mails_f_mess2cust');
+       ' процедура которая должна была удалить старые сообщения клиентам из таблицы messages2customers НЕ сработала '||rtrim(to_char(sysdate,'dd.mm.yyyy hh24:mi:ss')), 'del_old_mails_f_mess2cust');
 end Del_old_mails_f_mess2cust;
 
 --*************************************************************************************************
--- РџРµСЂРµРІРѕРґ Р·РЅР°С‡РµРЅРёР№ РїСЂРµРґСЃС‚Р°РІР»РµРЅРЅС‹С… РІ РІРёРґРµ СЃС‚РѕР»Р±С†Р° РІ Р»РёРЅРµР№РЅС‹Рµ
+-- Перевод значений представленных в виде столбца в линейные
 --*************************************************************************************************
 FUNCTION emails2line(P_ORD_ID IN T_ORDERS.ORD_ID%TYPE)
   RETURN VARCHAR2 IS
