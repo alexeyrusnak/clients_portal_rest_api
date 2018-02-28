@@ -21,8 +21,8 @@ DECLARE
   lOrdNumber varchar2(150);
   lOrdFreightDef varchar2(200);
   
-  lMessTplDef varchar2(200) := 'Изменение статуса заказа <номер заявки>';
-  lMessTplDef02 varchar2(200) := 'Заявка <номер заявки> принята в работу';
+  lMessTplDef varchar2(200) := 'Изменение статуса заказа';
+  lMessTplDef02 varchar2(200) := 'Заявка принята в работу';
   
   lMess   varchar2(2000);
   lMessSubject varchar2(2000);
@@ -61,14 +61,7 @@ BEGIN
       into lEmail, lClntId
       from client_contacts cl, orders o
      where o.ord_id = lOrdId
-       and cl.clcn_id(+) = o.clcn_clcn_id
-       and cl.email is not null
-       and rownum = 1;
-    
-    -- Останавливаем если нет e-mail
-    if lEmail is null then
-      return;
-    end if;
+       and cl.clcn_id(+) = o.clcn_clcn_id;
        
     -- Номер заявки клиента
    select o.internal_number, fr.def
@@ -85,17 +78,15 @@ BEGIN
    
     -- Шаблон сообщения
     begin
-      select t.def, t.messages_text
+      select t.subject, t.message_text
         into lMessSubject, lMess
-        from templates_messages t, message_subscriptions ms
-       where ms.tm_tm_id = t.tm_id
-         and ms.clnt_clnt_id = lClntId
-         and ms.del_user is null
-         and ms.del_date is null
-         and t.def = lMessTplDef;
+        from event_templates t
+       where t.def = lMessTplDef;
     exception
       when others then
-        -- Если нет шаблона или нет подписки на шаблон, выходим
+        ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,
+                     Message  => 'R_ORDER_STATUS_CHANGE_EVENT - Не найден шаблон сообщения',
+                     IsCommit => FALSE);
         return;
     end;
   
@@ -136,7 +127,7 @@ BEGIN
     -- Подготовка сообщения и темы
     lMessSubject := replace(lMessSubject, '<номер заявки>', lOrdNumber);
     
-    lMess := replace(lMess, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
+    lMess := replace(lMess, '<дата>', to_char(sysdate, 'dd.mm.yyyy hh24:mi'));
     lMess := replace(lMess, '<номер заявки>', lOrdNumber);
     lMess := replace(lMess, '<старый статус>', lOldStatusDef);
     lMess := replace(lMess, '<новый статус>', lNewStatusDef);
