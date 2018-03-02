@@ -104,7 +104,7 @@ BEGIN
       select tt.orst_orst_id
         into lOldOrstId
         from (select t.*, max(t.orhs_id) over() as max_orhs_id
-                from orst_histories t) tt
+                from orst_histories t where t.ord_ord_id = lOrdId) tt
        where tt.orhs_id = max_orhs_id;
     exception
       when others then
