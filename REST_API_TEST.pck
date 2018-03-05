@@ -1,7 +1,7 @@
-CREATE OR REPLACE PACKAGE REST_API AS
+CREATE OR REPLACE PACKAGE REST_API_TEST AS
 
   PkgVersion    varchar2(10) := 'v.1.0.0'; -- Версия пакета
-  ApexAppId     number := 100; --100; -- ИД Апекс-приложения
+  ApexAppId     number := 100; -- ИД Апекс-приложения
   ApexAppPageId number := 1; -- ИД страницы Апекс-приложения
   WorkspaceName varchar2(255) := 'REST'; -- Воркспейс
 
@@ -55,23 +55,24 @@ CREATE OR REPLACE PACKAGE REST_API AS
   Вывод данных пользователя
   */
   procedure PrintEcho;
+  
+  /*
+  Вывод списка заказов - п.4.7.3 ТЗ на АПИ
+  */
+  function Orders return rest_api_err;
+
+ /*
+  Вывод информации по конкретному заказу
+  */
+  function Orders_get return rest_api_err;
+
 
   /*
   Сотрудники - пока просто пример
   */
   procedure Employees(pStatus out number);
 
-  /*
-  Вывод списка заказов - п.4.7.3 ТЗ на АПИ
-  */
-  function Orders return rest_api_err;
-
-  /*
-  Вывод информации по конкретному заказу
-  */
-  function Orders_get return rest_api_err;
-
-  /*
+   /*
   Вывод списка стран
   */
   function PrintCountryList return rest_api_err;
@@ -93,8 +94,6 @@ CREATE OR REPLACE PACKAGE REST_API AS
 
   /*
   Вывод информации по конкретному документу
-        -- Чтение (выдача данных) документа
-        -- п.4.8.2 ТЗ  
   */
   function PrintDoc return rest_api_err;
 
@@ -176,35 +175,35 @@ CREATE OR REPLACE PACKAGE REST_API AS
   function shippers return rest_api_err;
 
   -- Коллекции контрагентов. Получение коллекции. п. 4.3.1.1 в ТЗ на разработку АПИ (операция consignees)
-  -- 
+  --
   function consignees return rest_api_err;
 
   /*
    Журнал протоколирования ошибок и тестирования
   */
   procedure ins_syslog(mess in varchar2, logdate in date);
-END REST_API;
+END REST_API_TEST;
 /
-CREATE OR REPLACE PACKAGE BODY REST_API AS
+CREATE OR REPLACE PACKAGE BODY REST_API_TEST AS
 
   procedure PrintErrorJson(pErrNum in number) is
   begin
-  
+
     PrintErrorJson(Errors(pErrNum));
-  
+
   end;
 
   procedure PrintErrorJson(pErrNum in rest_api_err) is
   begin
-  
+
     apex_json.open_object('error');
-  
+
     apex_json.write('code', pErrNum.code);
-  
+
     apex_json.write('message', pErrNum.message);
-  
+
     apex_json.close_object;
-  
+
   end;
 
   procedure HtpPrn(pclob in clob) is
@@ -229,18 +228,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
 
   procedure Api(pBody in clob) is
     lWorkspaceId number;
-  
+
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lOperation varchar2(255) := '';
-  
+
   begin
-  
+
     apex_json.initialize_clob_output;
-  
+
     apex_json.open_object;
-  
+
     begin
       lWorkspaceId := apex_util.find_security_group_id(p_workspace => WorkspaceName);
       apex_util.set_security_group_id(p_security_group_id => lWorkspaceId);
@@ -250,7 +249,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lError         := Errors(3);
         lError.message := sqlerrm;
     end;
-  
+
     if lIsSuccess then
       begin
         apex_json.parse(pBody);
@@ -261,7 +260,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           lError.message := sqlerrm;
       end;
     end if;
-  
+
     if lIsSuccess then
       begin
         lOperation := apex_json.get_varchar2('operation');
@@ -271,19 +270,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           lError     := Errors(4);
       end;
     end if;
-  
+
     if lIsSuccess then
       CASE lOperation
         WHEN 'TEST' THEN
           lError.message := 'qwerty';
-        
-        -- Авторизация пользователя портала
+
         WHEN 'login' THEN
           lError := Login();
           if lError.success != 1 then
             lIsSuccess := false;
           end if;
-        -- выход из портала
+
         WHEN 'logout' THEN
           if IsSessionValid() then
             lError := Logout();
@@ -294,7 +292,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'echo' THEN
           if IsSessionValid() then
             apex_json.open_object('data');
@@ -304,10 +302,10 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        -- П.4.7.3 ТЗ на АПИ - получение списка заказов
+
         WHEN 'orders' THEN
           if IsSessionValid() then
-            lError := Orders();           
+            lError := Orders();
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -315,10 +313,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        -- Пункт 4.7.2 ТЗ на АПИ - получение информации по заказу
+
         WHEN 'orders_get' THEN
           if IsSessionValid() then
-            -- lError := PrintOrder();
             lError := Orders_get();
             if lError.success != 1 then
               lIsSuccess := false;
@@ -327,7 +324,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'country_list' THEN
           if IsSessionValid() then
             lError := PrintCountryList();
@@ -338,7 +335,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'region_list' THEN
           if IsSessionValid() then
             lError := PrintRegionList();
@@ -349,7 +346,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'city_list' THEN
           if IsSessionValid() then
             lError := PrintCityList();
@@ -360,7 +357,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'doctype_list' THEN
           if IsSessionValid() then
             lError := PrintDocTypList();
@@ -371,8 +368,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        -- Чтение (выдача данных) документа
-        -- п.4.8.2 ТЗ
+
         WHEN 'orders_doc' THEN
           if IsSessionValid() then
             lError := PrintDoc();
@@ -383,7 +379,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'orders_docs' THEN
           if IsSessionValid() then
             lError := PrintDocs();
@@ -394,7 +390,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'orders_doc_create' THEN
           if IsSessionValid() then
             lError := CreateDoc();
@@ -405,7 +401,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'orders_doc_update' THEN
           if IsSessionValid() then
             lError := UpdateDoc();
@@ -416,7 +412,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
         WHEN 'orders_doc_delete' THEN
           if IsSessionValid() then
             lError := RemoveDoc();
@@ -427,7 +423,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-          -- Вывод информации по компании       
+          -- Вывод информации по компании
         WHEN 'companies' THEN
           if IsSessionValid() then
             lError := Companies();
@@ -529,40 +525,40 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         ELSE
           lIsSuccess := false;
           lError     := Errors(4);
-        
+
       END CASE;
     end if;
-  
+
     apex_json.write('success', lIsSuccess);
-  
+
     if lIsSuccess != true then
       PrintErrorJson(lError);
     end if;
-  
+
     apex_json.close_object;
-  
+
     --htp.p(APEX_JSON.get_clob_output);
     HtpPrn(APEX_JSON.get_clob_output);
-  
+
     apex_json.free_output;
-  
+
   end;
   -- авторизация пользователя портала
   function Login return rest_api_err is
-  
+
     lUsername varchar2(255);
     lPassword varchar2(255);
-  
+
     lSession         varchar2(40);
     lToken           varchar2(40);
     lSessionLifeTime date;
-  
+
     lIsSessionValid  boolean;
     lIsAuthenticated boolean;
-  
+
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
   begin
     begin
       -- Получаем логин и пароль из запроса в формате JSON
@@ -574,7 +570,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lError         := Errors(3);
         lError.message := sqlerrm;
     end;
-  
+
     if lIsSuccess then
       begin
         apex_custom_auth.login(p_uname      => lUsername,
@@ -599,19 +595,19 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           lIsSuccess     := false;
       end;
     end if;
-  
+
     if lIsSuccess then
       lIsSessionValid  := APEX_CUSTOM_AUTH.IS_SESSION_VALID;
       lIsAuthenticated := APEX_AUTHENTICATION.IS_AUTHENTICATED;
-    
+
       if lIsSessionValid and lIsAuthenticated then
         lIsSuccess := true;
       else
         lIsSuccess := false;
       end if;
-    
+
       apex_json.open_object('data');
-    
+
       if lIsSuccess then
         lSession := apex_application.g_instance;
         lToken   := dbms_random.string('A', 40);
@@ -620,87 +616,87 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         APEX_UTIL.set_preference('TOKEN',
                                  lToken,
                                  APEX_CUSTOM_AUTH.GET_USERNAME);
-      
+
         select t.session_idle_timeout_on
           into lSessionLifeTime
           from APEX_WORKSPACE_SESSIONS t
          where t.apex_session_id = lSession
            and t.workspace_name = WorkspaceName;
-      
+
         apex_json.write('session_lifetime', lSessionLifeTime);
-      
+
         PrintEcho();
-      
+
       else
         lError := Errors(2);
       end if;
-    
+
       apex_json.close_object;
     end if;
-  
+
     return lError;
   end;
 
   -- выход из портала (деавторизация)
   function Logout return rest_api_err is
-  
+
     lError rest_api_err := Errors(1);
-  
+
   begin
-  
+
     begin
-    
+
       APEX_UTIL.set_preference('TOKEN',
                                dbms_random.string('A', 40),
                                APEX_CUSTOM_AUTH.GET_USERNAME);
-    
+
     exception
       when others then
         lError         := Errors(2);
         lError.message := sqlerrm;
     end;
-  
+
     return lError;
-  
+
   end;
 
   function IsSessionValid(pSession in varchar2 default null,
                           pToken   in varchar2 default null) return boolean is
-  
+
     lIsAuthenticated boolean;
-  
+
     lIsSuccess boolean := true;
-  
+
     lSession varchar2(255);
-  
+
     lToken varchar2(255);
-  
+
   begin
-  
+
     begin
       if pSession is not null then
         lSession := to_number(pSession);
       else
         lSession := apex_json.get_varchar2('session');
       end if;
-    
+
       if pToken is not null then
         lToken := pToken;
       else
         lToken := apex_json.get_varchar2('token');
       end if;
-    
+
     exception
       when others then
         lIsSuccess := false;
     end;
-  
+
     apex_application.g_instance     := lSession;
     apex_application.g_flow_id      := ApexAppId;
     apex_application.g_flow_step_id := ApexAppPageId;
-  
+
     lIsAuthenticated := APEX_AUTHENTICATION.IS_AUTHENTICATED;
-  
+
     if lIsAuthenticated then
       if APEX_UTIL.get_preference('TOKEN', APEX_CUSTOM_AUTH.GET_USERNAME) =
          lToken then
@@ -713,7 +709,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     else
       lIsSuccess := false;
     end if;
-  
+
     return lIsSuccess;
   end;
 
@@ -722,63 +718,24 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lCurrentUserName varchar2(255);
   begin
     apex_json.open_object('user');
-  
+
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCurrentUserId   := APEX_UTIL.GET_USER_ID(lCurrentUserName);
-  
+
     apex_json.write('id', lCurrentUserId);
     apex_json.write('login', lCurrentUserName);
     apex_json.write('email', APEX_UTIL.GET_EMAIL(lCurrentUserName));
     apex_json.write('phone', APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 2));
-    /*
     apex_json.write('first_name',
                     APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));
-                    */
-    apex_json.write('name',
-                    APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));                
     apex_json.write('last_name', APEX_UTIL.GET_LAST_NAME(lCurrentUserName));
-  
+
     apex_json.write('company',
                     APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
-  
+
     apex_json.close_object;
   end;
-
-  procedure Employees(pStatus out number) is
   
-    lIsSuccess boolean;
-  
-    lError rest_api_err := Errors(3);
-  
-    lRc sys_refcursor;
-  begin
-  
-    --lIsSuccess := IsSessionValid(pSession, pToken);
-  
-    apex_json.initialize_clob_output;
-  
-    apex_json.open_object;
-  
-    apex_json.write('success', lIsSuccess);
-  
-    if not lIsSuccess then
-      PrintErrorJson(lError);
-      pStatus := 401;
-    else
-      pStatus := 200;
-      open lRc for
-        select emp.*, row_number() over(order by empno) rn from emp;
-      apex_json.write('data', lRc);
-    end if;
-  
-    apex_json.close_object;
-  
-    htp.p(APEX_JSON.get_clob_output);
-  
-    apex_json.free_output;
-  
-  end;
-
   /*
   Вывод списка заказов - п.4.7.3 ТЗ на АПИ
   */
@@ -801,86 +758,12 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lPeriodFrom date := SYSDATE - PkgDefaultPeriodIndays;
     lPeriodTo   date := SYSDATE;
     lStatusId   number := null;
-    
-    -- 30.01.2018 - фильтр по дате создания заказа created_at
-    lCreatedFrom date := SYSDATE - PkgDefaultPeriodIndays;
-    lCreatedTo   date := sysdate; 
-    lCreatedType varchar2(7); 
-    -- Фильтр по дате отправки заказа
-    lDate_fromStart    date := null;
-    lDate_fromEnd      date := null;
-    lDate_fromType     varchar2(7);
-    -- Фильтр по дате прибытия заказа
-    lDate_toStart      date := null;
-    lDate_toEnd        date := null;
-    lDate_toType       varchar2(7);
-    -- Фильтр по статусу заказа
-    lStatus_id         varchar2(10);
-    lStatus_idType     varchar2(7);
-        -- Фильтр по дате закрытия заказа date_closed
-    lDate_closedStart date := null;
-    lDate_closedEnd   date := null;
-    lDate_closedType  varchar2(7);
-    -- Фильтр по ИД заказа
-    lOrderId         t_orders.ord_id%type;
-    lOrderIdType     varchar2(7);
-    -- Фильтр по дате погрузки
-    lShipment_dateStart date := null;
-    lShipment_dateEnd   date := null;
-    lShipment_dateType  varchar2(7);
-    -- Фильтр по номеру ТЕ (контейнера) с индексом
-    lTE_Number      varchar2(50);
-    lTE_NumberType  varchar2(7);
-    -- Фильтр по дате подхода в порт перевалки
-   lUnloadTranshPlanDateStart date := null;
-   lUnloadTranshPlanDateEnd   date := null;
-   lUnloadTranshPlanDateType  varchar2(7);
-   -- Фильтр по дате подхода в порт назначения
-   lUnloadDestPlanDateStart date := null;
-   lUnloadDestPlanDateEnd   date := null;
-   lUnloadDestPlanDateType  varchar2(7);
-   -- Фильтр по дате выгрузки в портцу назначения (факт)
-   lUnloadDestFactDateStart  date := null;
-   lUnloadDestFactDateEnd    date := null;
-   lUnloadDestFactDateType   varchar2(7);
-   -- Фильтр по дате подачи ТД
-   lDate_dtStart  date := null;
-   lDate_dtEnd    date := null;
-   lDate_dtType   varchar2(7);
-   -- Фильтр по дате выпуска ТД
-   lDate_release_dtStart date := null;
-   lDate_release_dtEnd   date := null;
-   lDate_release_dtType  varchar2(7);
-   -- Фильтр по дате выоза из порта
-   lDate_export_portStart date := null;
-   lDate_export_portEnd   date := null;
-   lDate_export_port      varchar2(7);
-   -- Фильтр по дате возврата порожнего контейнера
-   lDate_return_emptyStart date := null;
-   lDate_return_emptyEnd   date := null;
-   lDate_return_emptyType  varchar2(7);
-   -- Фильтр по дате выгрузки на склад
-   lDate_unloading_warehouseStart date := null;
-   lDate_unloading_warehouseEnd   date := null;
-   lDate_unloading_warehouseType  varchar2(7);
-   -- Фильтр по номеру ТД 
-   lDT_number varchar2(50);
-   lDT_numberType varchar2(7);
-   -- Фильтр по номеру машины на вывоз контейнера
-   lAM_number varchar2(50);
-   lAM_numberType varchar2(7);
-   -- Фильтр по ФИО водителя
-   lFIO_driver varchar2(50);
-   lFIO_driverType varchar2(7);
-   -- Фильтр по наименованию груза
-   lCargo_name  varchar2(100);
-   lCargo_nameType varchar2(7);
-    -- Переменные сортировки данных на выходе
-    lSortId          varchar2(4) := null; -- сортировка по ИД заказов
-    lSortCreatedAt   varchar2(4) := null; -- сортировка по дате создания заказов
-    lSortDateFrom    varchar2(4) := null; -- сортировка по дате отправки заказов
-    lSortDateTo      varchar2(4) := null; -- сортировка по дате прибытия заказов
-    lSortReceivables varchar2(4) := null; -- сортировк апо умме задолжнности по заказам
+  
+    lSortId          varchar2(4) := null;
+    lSortCreatedAt   varchar2(4) := null;
+    lSortDateFrom    varchar2(4) := null;
+    lSortDateTo      varchar2(4) := null;
+    lSortReceivables varchar2(4) := null;
   
     lFiltersState    varchar2(255) := null;
     lFiltersPrevious varchar2(255) := null;
@@ -898,30 +781,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                       p_default => PkgDefaultOffset);
       lLimit  := apex_json.get_number(p_path    => 'limit',
                                       p_default => PkgDefaultLimit);
-      begin
-         lCreatedType := apex_json.get_varchar2(p_path    => 'filter.created_at.type',
-                                                p_default => null); 
-        ins_syslog(mess => 'lCreatedType - ' || lCreatedType, logdate => sysdate);
-         if lCreatedType = 'between' then
-            begin
-               lCreatedFrom := apex_json.get_date(p_path    => 'filter.created_at.value[1]',
-                                                  p_format  => PkgDefaultDateFormat,
-                                                  p_default => SYSDATE - PkgDefaultPeriodIndays);
-               lCreatedTo := apex_json.get_date(p_path    => 'filter.created_at.value[2]',
-                                                p_format  => PkgDefaultDateFormat,
-                                                p_default => SYSDATE - PkgDefaultPeriodIndays);
-            end; 
-         else
-           -- период отбора данных: =, !=, >= и т.д.
-           lCreatedFrom := apex_json.get_date(p_path    => 'filter.created_at.value',
-                                              p_format  => PkgDefaultDateFormat);
-         end if;
-    --  ins_syslog(mess => 'lCreatedFrom - ' || to_char(lCreatedFrom,'dd.mm.yyyy'), logdate => sysdate); 
-    --  ins_syslog(mess => 'lCreatedTo - ' || to_char(lCreatedTo,'dd.mm.yyyy'), logdate => sysdate);                                                                                                                                                                                                                       
-      exception
-        when others then
-          ins_syslog(mess => SQLERRM, logdate => sysdate);                                               
-      end;                                               
+    
       lPeriodFrom := apex_json.get_date(p_path    => 'filter.date_from.value',
                                         p_format  => PkgDefaultDateFormat,
                                         p_default => SYSDATE -
@@ -964,7 +824,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lFiltersPrevious := apex_util.get_preference(lCollectionName ||
                                                  apex_application.g_instance,
                                                  lCurrentUserName);
-    --ins_syslog(mess => 'lFiltersPrevious - ' || lFiltersPrevious, logdate => sysdate);
+  
     lFiltersState := 'lPeriodFrom=' ||
                      to_char(lPeriodFrom, PkgDefaultDateFormat) || ';' ||
                      'lPeriodTo=' ||
@@ -975,7 +835,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                      'lSortDateFrom=' || to_char(lSortDateFrom) || ';' ||
                      'lSortDateTo=' || to_char(lSortDateTo) || ';' ||
                      'lSortReceivables=' || to_char(lSortReceivables) || ';';
-     ins_syslog('lFiltersState - ' || lFiltersState, sysdate);
+  
     if lFiltersPrevious = lFiltersState then
       lShouldResetCollection := false;
     end if;
@@ -986,18 +846,22 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                              lCurrentUserName);
   
     if lIsSuccess then
-       -- Формирование коллекции
-       if lShouldResetCollection then
-          lCollectionExists := APEX_COLLECTION.COLLECTION_EXISTS(lCollectionName);
+    
+      -- Формирование коллекции
+      if lShouldResetCollection then
       
-       if lCollectionExists then
+        lCollectionExists := APEX_COLLECTION.COLLECTION_EXISTS(lCollectionName);
+      
+        if lCollectionExists then
           APEX_COLLECTION.DELETE_COLLECTION(lCollectionName);
-       end if;
-       APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
+        end if;
+      
+        APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
+      
         for l_c in (select *
                       from TABLE(mcsf_api.get_orders(pClntId          => lCompanyId,
-                                                     pDate_from       => lCreatedFrom, -- lPeriodFrom,
-                                                     pDate_to         => lCreatedTo, -- lPeriodTo,
+                                                     pDate_from       => lPeriodFrom,
+                                                     pDate_to         => lPeriodTo,
                                                      pStatus_id       => lStatusId,
                                                      pSortId          => lSortId,
                                                      pSortCreated_at  => lSortCreatedAt,
@@ -1302,67 +1166,104 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
   end;
 
-  /*
+
+  procedure Employees(pStatus out number) is
+
+    lIsSuccess boolean;
+
+    lError rest_api_err := Errors(3);
+
+    lRc sys_refcursor;
+  begin
+
+    --lIsSuccess := IsSessionValid(pSession, pToken);
+
+    apex_json.initialize_clob_output;
+
+    apex_json.open_object;
+
+    apex_json.write('success', lIsSuccess);
+
+    if not lIsSuccess then
+      PrintErrorJson(lError);
+      pStatus := 401;
+    else
+      pStatus := 200;
+      open lRc for
+        select emp.*, row_number() over(order by empno) rn from emp;
+      apex_json.write('data', lRc);
+    end if;
+
+    apex_json.close_object;
+
+    htp.p(APEX_JSON.get_clob_output);
+
+    apex_json.free_output;
+
+  end;
+
+
+   /*
   Вывод списка стран
   */
   function PrintCountryList return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lOffset number;
     lLimit  number;
-  
+
     lColectionCount number := 0;
-  
+
   begin
-  
+
     -- filters
     begin
       lOffset := apex_json.get_number(p_path    => 'offset',
                                       p_default => PkgDefaultOffset);
       lLimit  := apex_json.get_number(p_path    => 'limit',
                                       p_default => PkgDefaultLimit);
-    
+
     exception
       when others then
         lIsSuccess := false;
         lError     := Errors(5);
     end;
-  
+
     if lIsSuccess then
       apex_json.open_array('data');
-    
+
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
                             from TABLE(mcsf_api.fn_country_list) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
-      
+
         apex_json.open_object;
-      
+
         apex_json.write('seq_id', l_c.seq_id, true);
         apex_json.write('id', l_c.id, true);
         apex_json.write('name', l_c.def, true);
-      
+
         apex_json.close_object;
       end loop;
     end if;
-  
+
     apex_json.close_array;
-  
+
     -- Pager
     apex_json.open_object('pager');
-  
+
     apex_json.write('offset', lOffset);
-  
+
     select count(t.id)
       into lColectionCount
       from TABLE(mcsf_api.fn_country_list) t;
-  
+
     apex_json.write('total', lColectionCount);
-  
+
     apex_json.close_object();
-  
+
     return lError;
   end;
 
@@ -1372,61 +1273,61 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function PrintRegionList return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lOffset number;
     lLimit  number;
-  
+
     lColectionCount number := 0;
-  
+
   begin
-  
+
     -- filters
     begin
       lOffset := apex_json.get_number(p_path    => 'offset',
                                       p_default => PkgDefaultOffset);
       lLimit  := apex_json.get_number(p_path    => 'limit',
                                       p_default => PkgDefaultLimit);
-    
+
     exception
       when others then
         lIsSuccess := false;
         lError     := Errors(5);
     end;
-  
+
     if lIsSuccess then
       apex_json.open_array('data');
-    
+
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
                             from TABLE(mcsf_api.fn_region_list) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
-      
+
         apex_json.open_object;
-      
+
         apex_json.write('seq_id', l_c.seq_id, true);
         apex_json.write('id', l_c.id, true);
         apex_json.write('name', l_c.region_name, true);
-      
+
         apex_json.close_object;
       end loop;
     end if;
-  
+
     apex_json.close_array;
-  
+
     -- Pager
     apex_json.open_object('pager');
-  
+
     apex_json.write('offset', lOffset);
-  
+
     select count(t.id)
       into lColectionCount
       from TABLE(mcsf_api.fn_region_list) t;
-  
+
     apex_json.write('total', lColectionCount);
-  
+
     apex_json.close_object();
-  
+
     return lError;
   end;
 
@@ -1436,61 +1337,61 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function PrintCityList return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lOffset number;
     lLimit  number;
-  
+
     lColectionCount number := 0;
-  
+
   begin
-  
+
     -- filters
     begin
       lOffset := apex_json.get_number(p_path    => 'offset',
                                       p_default => PkgDefaultOffset);
       lLimit  := apex_json.get_number(p_path    => 'limit',
                                       p_default => PkgDefaultLimit);
-    
+
     exception
       when others then
         lIsSuccess := false;
         lError     := Errors(5);
     end;
-  
+
     if lIsSuccess then
       apex_json.open_array('data');
-    
+
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
                             from TABLE(mcsf_api.fn_cities_list) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
-      
+
         apex_json.open_object;
-      
+
         apex_json.write('seq_id', l_c.seq_id, true);
         apex_json.write('id', l_c.id, true);
         apex_json.write('name', l_c.def, true);
-      
+
         apex_json.close_object;
       end loop;
     end if;
-  
+
     apex_json.close_array;
-  
+
     -- Pager
     apex_json.open_object('pager');
-  
+
     apex_json.write('offset', lOffset);
-  
+
     select count(t.id)
       into lColectionCount
       from TABLE(mcsf_api.fn_cities_list) t;
-  
+
     apex_json.write('total', lColectionCount);
-  
+
     apex_json.close_object();
-  
+
     return lError;
   end;
 
@@ -1500,61 +1401,61 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function PrintDocTypList return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lOffset number;
     lLimit  number;
-  
+
     lColectionCount number := 0;
-  
+
   begin
-  
+
     -- filters
     begin
       lOffset := apex_json.get_number(p_path    => 'offset',
                                       p_default => PkgDefaultOffset);
       lLimit  := apex_json.get_number(p_path    => 'limit',
                                       p_default => PkgDefaultLimit);
-    
+
     exception
       when others then
         lIsSuccess := false;
         lError     := Errors(5);
     end;
-  
+
     if lIsSuccess then
       apex_json.open_array('data');
-    
+
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
                             from TABLE(mcsf_api.fn_doc_types) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
-      
+
         apex_json.open_object;
-      
+
         apex_json.write('seq_id', l_c.seq_id, true);
         apex_json.write('id', l_c.id, true);
         apex_json.write('name', l_c.def, true);
-      
+
         apex_json.close_object;
       end loop;
     end if;
-  
+
     apex_json.close_array;
-  
+
     -- Pager
     apex_json.open_object('pager');
-  
+
     apex_json.write('offset', lOffset);
-  
+
     select count(t.id)
       into lColectionCount
       from TABLE(mcsf_api.fn_doc_types) t;
-  
+
     apex_json.write('total', lColectionCount);
-  
+
     apex_json.close_object();
-  
+
     return lError;
   end;
 
@@ -1564,23 +1465,25 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function PrintDoc return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     --lCurrentUserId   number;
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-  
+
     lRc sys_refcursor;
-  
+
     lDocId number := null;
+
     lDocs mcsf_api.tbl_docs := null;
-  
+
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
-  
+
     -- filters
     begin
+      --lDocId := apex_json.get_number(p_path => 'data.id', p_default => null);
       lDocId := apex_json.get_number(p_path    => 'filter.id',
                                      p_default => null); -- Изм. ТЗ 17.07.2017
     exception
@@ -1588,20 +1491,28 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         lError     := Errors(5);
     end;
-  
+
     if lIsSuccess then
       -- Данные по документу
       apex_json.open_object('data');
+
       begin
         open lRc for
           select *
             from TABLE(mcsf_api.fn_orders_doc(pID     => lDocId,
                                               pClntId => lCompanyId));
-          fetch lRc bulk collect into lDocs;
+
+        fetch lRc bulk collect
+          into lDocs;
+
         close lRc;
+
         for elem in lDocs.first .. lDocs.last loop
+          --apex_json.open_object;
           rest_api_helper.PrintT_DOCS(lDocs(elem));
+          --apex_json.close_object;
         end loop;
+
         -- Ю.К., 21.06.2017:
         apex_json.open_array('files');
         for cur in (select *
@@ -1612,17 +1523,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           apex_json.close_object;
         end loop;
         apex_json.close_array;
+
       exception
         when others then
           lIsSuccess := false;
-          htp.print(SQLERRM);
           lError     := Errors(8);
       end;
-    
+
       apex_json.close_object;
-    
+
     end if;
-  
+
     return lError;
   end;
 
@@ -1647,12 +1558,12 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     v_ord_id_val  varchar2(200); -- may be CSV
     v_date_typ    varchar2(20);
     v_date_val    varchar2(200); -- may be CSV
-  
+
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
-  
+
     -- Filters:
     begin
       lOffset := apex_json.get_number(p_path    => 'offset',
@@ -1750,11 +1661,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function CreateDoc return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     --lCurrentUserId   number;
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-  
+
     lDocId        number := null;
     lOrderId      number := null;
     lTypeId       number := null;
@@ -1763,33 +1674,33 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lDocNumber    varchar2(255) := null;
     lDocName      varchar2(255) := null;
     lShortContent varchar2(255) := null;
-  
+
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
-  
+
     -- data
     begin
-    
+
       lOrderId := apex_json.get_number(p_path    => 'data.order_id',
                                        p_default => null);
-      lTypeId  := apex_json.get_number(p_path    => 'data.type_id',
+      lTypeId  := apex_json.get_number(p_path    => 'data.type',
                                        p_default => null);
-    
+
       lDate := apex_json.get_date(p_path    => 'data.date',
                                   p_format  => PkgDefaultDateFormat,
                                   p_default => null);
-    
+
       lAuthor := apex_json.get_varchar2(p_path    => 'data.author',
                                         p_default => null);
-    
+
       lDocNumber := apex_json.get_varchar2(p_path    => 'data.number',
                                            p_default => null);
-    
+
       lShortContent := apex_json.get_varchar2(p_path    => 'data.theme',
                                               p_default => null);
-    
+
       lShortContent := apex_json.get_varchar2(p_path    => 'data.short_content',
                                               p_default => null);
     exception
@@ -1797,10 +1708,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         lError     := Errors(9);
     end;
-  
+
     if lIsSuccess then
       begin
-        begin
         lDocId := mcsf_api.
                   CreateDocument(pOrdId        => lOrderId,
                                  pClntId       => lCompanyId,
@@ -1810,14 +1720,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                  pTheme        => lDocName,
                                  pShortContent => lShortContent,
                                  pAuthor       => lAuthor);
-        exception when others then -- YK, 07.11.2017
-          lIsSuccess := false;
-          lError     := rest_api_err(SQLCODE,
-                                 SQLERRM,
-                                 0);
-          --Errors(10);
-          return lError;
-        end;
+
         if lDocId is not null and lDocId > 0 then
           lIsSuccess := true;
           apex_json.open_object('data');
@@ -1826,20 +1729,20 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         else
           lIsSuccess := false;
         end if;
-      
+
         if lIsSuccess = false then
           lError := rest_api_err('failed_create_document',
                                  'Failed create document',
                                  0);
         end if;
-      
+
       exception
         when others then
           lIsSuccess := false;
           lError     := Errors(3);
       end;
     end if;
-  
+
     return lError;
   end;
 
@@ -1849,11 +1752,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function UpdateDoc return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     --lCurrentUserId   number;
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-  
+
     lDocId        number := null;
     lOrderId      number := null;
     lTypeId       number := null;
@@ -1862,34 +1765,34 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lDocNumber    varchar2(255) := null;
     lDocName      varchar2(255) := null;
     lShortContent varchar2(255) := null;
-  
+
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
-  
+
     -- data
     begin
       lDocId   := apex_json.get_number(p_path    => 'data.id',
                                        p_default => null);
       lOrderId := apex_json.get_number(p_path    => 'data.order_id',
                                        p_default => null);
-      lTypeId  := apex_json.get_number(p_path    => 'data.type_id',
+      lTypeId  := apex_json.get_number(p_path    => 'data.type',
                                        p_default => null);
-    
+
       lDate := apex_json.get_date(p_path    => 'data.date',
                                   p_format  => PkgDefaultDateFormat,
                                   p_default => null);
-    
+
       lAuthor := apex_json.get_varchar2(p_path    => 'data.author',
                                         p_default => null);
-    
+
       lDocNumber := apex_json.get_varchar2(p_path    => 'data.number',
                                            p_default => null);
-    
+
       lShortContent := apex_json.get_varchar2(p_path    => 'data.theme',
                                               p_default => null);
-    
+
       lShortContent := apex_json.get_varchar2(p_path    => 'data.short_content',
                                               p_default => null);
     exception
@@ -1897,7 +1800,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         lError     := Errors(9);
     end;
-  
+
     if lIsSuccess then
       begin
         lIsSuccess := mcsf_api.UpdateDocument(pClntId       => lCompanyId,
@@ -1908,20 +1811,20 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                               pTheme        => lDocName,
                                               pShortContent => lShortContent,
                                               pAuthor       => lAuthor);
-      
+
         if lIsSuccess = false then
           lError := rest_api_err('failed_update_document',
                                  'Failed update document',
                                  0);
         end if;
-      
+
       exception
         when others then
           lIsSuccess := false;
           lError     := Errors(3);
       end;
     end if;
-  
+
     return lError;
   end;
 
@@ -1931,18 +1834,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function RemoveDoc return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     --lCurrentUserId   number;
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-  
+
     lDocId number := null;
-  
+
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
-  
+
     -- data
     begin
       lDocId := apex_json.get_number(p_path => 'data.id', p_default => null);
@@ -1951,25 +1854,25 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         lError     := Errors(9);
     end;
-  
+
     if lIsSuccess then
       begin
         lIsSuccess := mcsf_api.RemoveDocument(pClntId => lCompanyId,
                                               pDocId  => lDocId);
-      
+
         if lIsSuccess = false then
           lError := rest_api_err('failed_remove_document',
                                  'Failed remove document',
                                  0);
         end if;
-      
+
       exception
         when others then
           lIsSuccess := false;
           lError     := Errors(3);
       end;
     end if;
-  
+
     return lError;
   end;
 
@@ -1981,35 +1884,35 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                     pFile   in blob,
                     pMime   in varchar2,
                     pFileId out number) return rest_api_err is
-  
+
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lFileId number := 0;
-  
+
   begin
-  
+
     if pFile is null then
       lIsSuccess := false;
       lError     := Errors(7);
     end if;
-  
+
     if lIsSuccess then
       begin
-      
+
         /*select count(t.id) + 1 into lFileId from test t;
         insert into test t
           (t.id, t.f, t.mime)
         values
           (lFileId, pFile, pMime);
-        
+
         pFileId := lFileId;*/
-      
+
         lFileId := mcsf_api.AddFileToDocument(pClntId   => pClntId,
                                               pDocId    => pDocId,
                                               pFileBody => pFile,
                                               pFileName => pMime);
-      
+
         if lFileId > 0 then
           lIsSuccess := true;
           pFileId    := lFileId;
@@ -2022,11 +1925,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           lIsSuccess := false;
           lError     := Errors(7);
       end;
-    
+
     end if;
-  
+
     return lError;
-  
+
   end;
 
   /*
@@ -2034,36 +1937,36 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   */
   function DownloadFile(pClntId in number, pFileId in number)
     return rest_api_err is
-  
+
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lFile blob := null;
-  
+
     lFileName varchar2(255) := '';
-  
+
   begin
-  
+
     if pFileId is null then
       lIsSuccess := false;
       lError     := Errors(8);
     end if;
-  
+
     if lIsSuccess then
       begin
-      
+
         /*select t.f, t.mime
          into lFile, lFileName
          from test t
         where t.id = pFileId;*/
-      
+
         mcsf_api.GetFile(pClntId   => pClntId,
                          pFileId   => pFileId,
                          pFileBody => lFile,
                          pFileName => lFileName);
-      
+
         if lFile is not null then
-        
+
           sys.htp.init;
           sys.owa_util.mime_header('application/octet-stream',
                                    false,
@@ -2071,23 +1974,23 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           sys.htp.p('Content-length: ' || sys.dbms_lob.getlength(lFile));
           sys.htp.p('Content-Disposition: inline; filename="' || lFileName || '"');
           sys.owa_util.http_header_close;
-        
+
           sys.wpg_docload.download_file(lFile);
-        
+
         else
           lError := Errors(8);
         end if;
-      
+
       exception
         when others then
           --lIsSuccess := false;
           lError := Errors(8);
       end;
-    
+
     end if;
-  
+
     return lError;
-  
+
   end;
 
   /*
@@ -2100,49 +2003,49 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                     pFileBody in blob default null,
                     pMime     in varchar2 default null) is
     lWorkspaceId number;
-  
+
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-  
+
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
+
     lFileId number := 0;
-  
+
     lMethod varchar2(10) := 'post';
   begin
     begin
       lWorkspaceId := apex_util.find_security_group_id(p_workspace => WorkspaceName);
       apex_util.set_security_group_id(p_security_group_id => lWorkspaceId);
-    
+
       if pFileId is not null then
         lMethod := 'get';
       end if;
-    
+
     exception
       when others then
         lIsSuccess     := false;
         lError         := Errors(3);
         lError.message := sqlerrm;
     end;
-  
+
     begin
       lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
       lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                             1));
-    
+
     exception
       when others then
         lIsSuccess     := false;
         lError         := Errors(9);
         lError.message := sqlerrm;
     end;
-  
+
     if lIsSuccess then
       CASE lMethod
-      
+
         WHEN 'get' THEN
-        
+
           if IsSessionValid(pSession, pToken) then
             lError := DownloadFile(pClntId => lCompanyId,
                                    pFileId => pFileId);
@@ -2153,27 +2056,27 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
           if lIsSuccess != true then
             apex_json.initialize_clob_output;
             apex_json.open_object;
-          
+
             apex_json.write('success', lIsSuccess);
-          
+
             PrintErrorJson(lError);
-          
+
             apex_json.close_object;
-          
+
             HtpPrn(APEX_JSON.get_clob_output);
-          
+
             apex_json.free_output;
           end if;
-        
+
         WHEN 'post' THEN
-        
+
           apex_json.initialize_clob_output;
           apex_json.open_object;
-        
+
           if IsSessionValid(pSession, pToken) then
             lError := SaveFile(pDocId  => pDocId,
                                pClntId => lCompanyId,
@@ -2192,23 +2095,23 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
-        
+
           apex_json.write('success', lIsSuccess);
-        
+
           if lIsSuccess != true then
             PrintErrorJson(lError);
           end if;
-        
+
           apex_json.close_object;
-        
+
           HtpPrn(APEX_JSON.get_clob_output);
-        
+
           apex_json.free_output;
-        
+
         ELSE
           lIsSuccess := false;
           lError     := Errors(4);
-        
+
       END CASE;
     end if;
   end;
@@ -2258,7 +2161,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     return lError;
   end;
 
-  -- =========================================================================================    
+  -- =========================================================================================
   -- Функция(и) для отчетов и графиков
 
   -- Отчет о грузах п.4.14.2 в ТЗ на разработку АПИ (операция report_order)
@@ -2292,7 +2195,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           lIsSuccess := false;
           return Errors(5);
         end if; -- КАК ПРАВИЛЬНО ОТВЕТИТЬ ОБ ОШИБКЕ УПРАВЛЕНИЯ ГРУППИРОВКОЙ?
-      
+
         lStart := apex_json.get_date(p_path    => 'filter.date_start',
                                      p_format  => PkgDefaultDateFormat,
                                      p_default => null);
@@ -2318,10 +2221,10 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                                            pStart  => lStart,
                                                            pStop   => lStop))
                  order by 1) loop
-        apex_json.open_object; --              {    
+        apex_json.open_object; --              {
         apex_json.write('x', c.d); --                "x":  2016-02-01,
         apex_json.write('y', c.n1, true); --                "y":  20,
-        apex_json.close_object; --              }      
+        apex_json.close_object; --              }
         lTotalOrders  := lTotalOrders + c.n1;
         lActiveOrders := lActiveOrders + c.n2;
         lClosedOrders := lClosedOrders + c.n3;
@@ -2378,9 +2281,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.open_object('data'); --  "data": {
       apex_json.write('id', c.id); --    "id":  123, -- NOT NULL, поскольку дан в запросе; остальные могут быть NULL, если вообще нет данных
       apex_json.write('name', c.name, true); --    "name": "Horns and hooves ltd",
-      apex_json.write('address', c.address, true); --    "address": "Russia, Tyumen, itd",    
-      apex_json.write('address_type', c.address_type, true); --    "address_type": "post", -- не поддерживаем    
-      apex_json.write('type', c.type, true); --    "type": 1,    
+      apex_json.write('address', c.address, true); --    "address": "Russia, Tyumen, itd",
+      apex_json.write('address_type', c.address_type, true); --    "address_type": "post", -- не поддерживаем
+      apex_json.write('type', c.type, true); --    "type": 1,
       apex_json.write('city_id', c.city_id, true); --    "city_id": 1,
       apex_json.write('city_name', c.city_name, true); --    "city_name": "Tyumen",
       apex_json.write('person_id', c.person_id, true); --    "person_id": 321,
@@ -2388,7 +2291,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.write('person_email', c.person_email, true); --    "person_email": "aaa@bbb.ccc",
       apex_json.write('person_name', c.person_name, true); --    "person_name": "Иванов Иван Иванович",
       apex_json.write('person_for', c.person_for, true); --    "person_for": "site" -- не поддерживаем
-      apex_json.close_object; --  } -- "data"    
+      apex_json.close_object; --  } -- "data"
     end if;
     return lError;
   end contractors_get;
@@ -2463,7 +2366,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                                       p_limit    => lLimit,
                                                       p_offset   => lOffset))
                  order by name) loop
-        apex_json.open_object; --   {    
+        apex_json.open_object; --   {
         apex_json.write('seq_id', c.seq_id); --    sequential number;
         apex_json.write('id', c.id); --    "id":  123, -- NOT NULL;
         apex_json.write('name', c.name, true); --    "name": "Horns and hooves ltd",
@@ -2472,7 +2375,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lCollectionCount := c.cou;
       end loop;
       apex_json.close_array; --  ] -- "data".
-    
+
       if lCollectionCount = 0 then
         lIsSuccess := false;
         return Errors(8); -- Not found.
@@ -2482,7 +2385,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.write('offset', lOffset);
       apex_json.write('total', lCollectionCount);
       apex_json.close_object;
-    
+
     end if;
     return lError;
   end contractors;
@@ -2621,7 +2524,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           lIsSuccess := false;
           return Errors(5);
       end;
-      -- параметры получены.      
+      -- параметры получены.
       apex_json.open_array('data'); --  "data": [
       for c in (select rownum    as seq_id,
                        total_cou as cou,
@@ -2715,9 +2618,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end if;
     return lError;
   end debts;
-
+  
   -- Коллекции контрагентов. Получение коллекции. п. 4.3.1.1 в ТЗ на разработку АПИ (операция shippers)
-  -- Ю.К. 
+  -- Ю.К.
 
   function shippers return rest_api_err is
     lIsSuccess       boolean := true;
@@ -2727,7 +2630,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     v_limit          number;
     v_start_with     number;
     lSortLine        varchar2(2000) := null;
-  
+
     lIdKey                 number;
     lIdOpr                 varchar2(5);
     lClientNameKey         varchar2(2000);
@@ -2744,24 +2647,24 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     ord_cou                number := 0;
     i                      number;
     lCount                 number := 0;
-    v_sql                  varchar2(20000) := 'select count(distinct c.clnt_id) as id    
-  from sbc.clients c, sbc.t_loading_places tlp, sbc.client_requests cr
-  where tlp.source_clnt_id = c.clnt_id and 
-        ldpl_type = 0 and 
-        cr.clrq_id = tlp.clrq_clrq_id and 
+    v_sql                  varchar2(20000) := 'select count(distinct c.clnt_id) as id
+  from SBC.clients c, SBC.t_loading_places tlp, SBC.client_requests cr
+  where tlp.source_clnt_id = c.clnt_id and
+        ldpl_type = 0 and
+        cr.clrq_id = tlp.clrq_clrq_id and
         cr.clnt_clnt_id =';
   begin
+
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
     v_sql            := v_sql || lCompanyId || ' ';
-
     begin
       v_limit      := apex_json.get_number(p_path    => 'limit',
                                            p_default => 10);
       v_start_with := apex_json.get_number(p_path    => 'offset',
                                            p_default => 0);
-    
+
       if apex_json.does_exist(p_path => 'filter') then
         lIdKey                 := apex_json.get_number(p_path    => 'filter.id.value',
                                                        p_default => null);
@@ -2801,7 +2704,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lActualAddressZipKey   := '%';
         lActualAddressZipOpr   := 'like';
       end if;
-    
+
       ord_cou := apex_json.get_count(p_path => 'order');
       if ord_cou > 0 then
         for i in 1 .. ord_cou loop
@@ -2818,64 +2721,65 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         return Errors(5);
     end;
-  
+
     apex_json.open_array('data');
 
     for c in (select *
-                from table(mcsf_api.getShippers(lCompanyId,
-                                                p_clnt_id_key              => lIdKey,
-                                                p_client_name_key          => lClientNameKey,
-                                                p_official_address_key     => lOfficialAddressKey,
-                                                p_official_address_zip_key => lOfficialAddressZipKey,
-                                                p_actual_address_key       => lActualAddressKey,
-                                                p_actual_address_zip_key   => lActualAddressZipKey,
-                                                p_clnt_id_opr              => lIdOpr,
-                                                p_client_name_opr          => lClientNameOpr,
-                                                p_official_address_opr     => lOfficialAddressOpr,
-                                                p_official_address_zip_opr => lOfficialAddressZipOpr,
-                                                p_actual_address_opr       => lActualAddressOpr,
-                                                p_actual_address_zip_opr   => lActualAddressZipOpr,
-                                                p_limit                    => v_limit,
-                                                p_start_with               => v_start_with,
-                                                p_sort_line                => lSortLine))
-              
+                from table(SBC.mcsf_api.getShippers(lCompanyId,
+                                                    p_clnt_id_key              => lIdKey,
+                                                    p_client_name_key          => lClientNameKey,
+                                                    p_official_address_key     => lOfficialAddressKey,
+                                                    p_official_address_zip_key => lOfficialAddressZipKey,
+                                                    p_actual_address_key       => lActualAddressKey,
+                                                    p_actual_address_zip_key   => lActualAddressZipKey,
+                                                    p_clnt_id_opr              => lIdOpr,
+                                                    p_client_name_opr          => lClientNameOpr,
+                                                    p_official_address_opr     => lOfficialAddressOpr,
+                                                    p_official_address_zip_opr => lOfficialAddressZipOpr,
+                                                    p_actual_address_opr       => lActualAddressOpr,
+                                                    p_actual_address_zip_opr   => lActualAddressZipOpr,
+                                                    p_limit                    => v_limit,
+                                                    p_start_with               => v_start_with,
+                                                    p_sort_line                => lSortLine))
+
               ) loop
-      apex_json.open_object; --   {    
+      apex_json.open_object; --   {
       apex_json.write('id', c.id); --    "clnt_id":  123, -- NOT NULL;
       apex_json.write('name', c.client_name, true); --    "name": "Horns and hooves ltd",
       apex_json.write('official_address_zip', c.official_address_zip, true);
       apex_json.write('official_address', c.official_address, true);
       apex_json.write('actual_address', c.actual_address, true);
       apex_json.write('actual_address_zip', c.actual_address_zip, true);
-    
+
       apex_json.open_array('persons'); --  "persons": [
-      for p in (select * from table(mcsf_api.getPersons(c.id))
+      for p in (select * from table(SBC.mcsf_api.getPersons(c.id))
+
                 ) loop
-        apex_json.open_object; --   {    
+        apex_json.open_object; --   {
         apex_json.write('id', p.id); --    "id":  123, -- NOT NULL;
         apex_json.write('name', p.name, true); --    "name": "Иванов",
         apex_json.write('phone', p.phone, true);
         apex_json.write('email', p.email, true);
         apex_json.write('position', p.position, true);
         apex_json.write('is_decide', p.is_decide, true);
-      
+
         apex_json.close_object; --   }
       end loop;
       apex_json.close_array;
-    
+
       apex_json.close_object; --   }
     end loop;
     apex_json.close_array; --  ]
-  
+
     -- Pager
     apex_json.open_object('pager');
-  
+
     apex_json.write('offset', v_start_with);
-  
+
     if lIdKey is not null then
       v_sql := v_sql || ' and c.clnt_id ' || lIdOpr || ' ' || lIdKey;
     end if;
-  
+
     v_sql := v_sql || ' and nvl(upper(c.client_name), '' '') ' ||
              lClientNameOpr || ' upper(''%' || lClientNameKey || '%'')' ||
              ' and nvl(upper(c.address), '' '') ' || lOfficialAddressOpr ||
@@ -2889,12 +2793,12 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     if lSortLine is not null then
       v_sql := v_sql || ' order by ' || lSortLine;
     end if;
-  
+
     EXECUTE IMMEDIATE v_sql
       INTO lCount;
-  
+
     apex_json.write('total', lCount);
-  
+
     apex_json.close_object();
     return lError;
   end shippers;
@@ -2907,7 +2811,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     v_limit          number;
     v_start_with     number;
     lSortLine        varchar2(2000) := null;
-  
+
     lIdKey                 number;
     lIdOpr                 varchar2(5);
     lClientNameKey         varchar2(2000);
@@ -2924,14 +2828,14 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     ord_cou                number := 0;
     i                      number;
     lCount                 number := 0;
-    v_sql                  varchar2(20000) := 'select count(distinct c.clnt_id) as id    
-  from sbc.clients c, sbc.t_loading_places tlp, sbc.client_requests cr
-  where tlp.source_clnt_id = c.clnt_id and 
-        ldpl_type = 1 and 
-        cr.clrq_id = tlp.clrq_clrq_id and 
+    v_sql                  varchar2(20000) := 'select count(distinct c.clnt_id) as id
+  from SBC.clients c, SBC.t_loading_places tlp, SBC.client_requests cr
+  where tlp.source_clnt_id = c.clnt_id and
+        ldpl_type = 1 and
+        cr.clrq_id = tlp.clrq_clrq_id and
         cr.clnt_clnt_id =';
   begin
-  
+
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,
                                                           1));
@@ -2941,7 +2845,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                            p_default => 10);
       v_start_with := apex_json.get_number(p_path    => 'offset',
                                            p_default => 0);
-    
+
       if apex_json.does_exist(p_path => 'filter') then
         lIdKey                 := apex_json.get_number(p_path    => 'filter.id.value',
                                                        p_default => null);
@@ -2981,7 +2885,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lActualAddressZipKey   := '%';
         lActualAddressZipOpr   := 'like';
       end if;
-    
+
       ord_cou := apex_json.get_count(p_path => 'order');
       if ord_cou > 0 then
         for i in 1 .. ord_cou loop
@@ -2998,9 +2902,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         return Errors(5);
     end;
-  
+
     apex_json.open_array('data');
-  
+
     for c in (select *
                 from table(SBC.mcsf_api.getConsignees(lCompanyId,
                                                       p_clnt_id_key              => lIdKey,
@@ -3018,45 +2922,45 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                                       p_limit                    => v_limit,
                                                       p_start_with               => v_start_with,
                                                       p_sort_line                => lSortLine))
-              
+
               ) loop
-      apex_json.open_object; --   {    
+      apex_json.open_object; --   {
       apex_json.write('id', c.id); --    "clnt_id":  123, -- NOT NULL;
       apex_json.write('name', c.client_name, true); --    "name": "Horns and hooves ltd",
       apex_json.write('official_address_zip', c.official_address_zip, true);
       apex_json.write('official_address', c.official_address, true);
       apex_json.write('actual_address', c.actual_address, true);
       apex_json.write('actual_address_zip', c.actual_address_zip, true);
-    
+
       apex_json.open_array('persons'); --  "persons": [
       for p in (select * from table(SBC.mcsf_api.getPersons(c.id))
-                
+
                 ) loop
-        apex_json.open_object; --   {    
+        apex_json.open_object; --   {
         apex_json.write('id', p.id); --    "id":  123, -- NOT NULL;
         apex_json.write('name', p.name, true); --    "name": "Иванов",
         apex_json.write('phone', p.phone, true);
         apex_json.write('email', p.email, true);
         apex_json.write('position', p.position, true);
         apex_json.write('is_decide', p.is_decide, true);
-      
+
         apex_json.close_object; --   }
       end loop;
       apex_json.close_array;
-    
+
       apex_json.close_object; --   }
     end loop;
     apex_json.close_array; --  ]
-  
+
     -- Pager
     apex_json.open_object('pager');
-  
+
     apex_json.write('offset', v_start_with);
-  
+
     if lIdKey is not null then
       v_sql := v_sql || ' and c.clnt_id ' || lIdOpr || ' ' || lIdKey;
     end if;
-  
+
     v_sql := v_sql || ' and nvl(upper(c.client_name), '' '') ' ||
              lClientNameOpr || ' upper(''%' || lClientNameKey || '%'')' ||
              ' and nvl(upper(c.address), '' '') ' || lOfficialAddressOpr ||
@@ -3070,18 +2974,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     if lSortLine is not null then
       v_sql := v_sql || ' order by ' || lSortLine;
     end if;
-  
+
     EXECUTE IMMEDIATE v_sql
       INTO lCount;
-  
+
     apex_json.write('total', lCount);
-  
+
     apex_json.close_object();
     return lError;
   end consignees;
 
   -- Коллекции контрагентов. Получение коллекции. п. 4.3.1.1 в ТЗ на разработку АПИ (операция consignees)
-  -- Ю.К. 
+  -- Ю.К.
 
   -- ================================================
   /*
@@ -3097,7 +3001,7 @@ BEGIN
 
   Errors := ErrorsArrType();
 
-  Errors.EXTEND(10);
+  Errors.EXTEND(9);
 
   Errors(1) := rest_api_err('success', 'success', 1);
 
@@ -3119,8 +3023,5 @@ BEGIN
 
   Errors(9) := rest_api_err('bad_data', 'Bad data', 0);
 
--- YK, 07.11.2017:  
-  Errors(10) := rest_api_err('check_point', 'Check Point', 0);  
-
-END REST_API;
+END REST_API_TEST;
 /
