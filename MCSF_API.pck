@@ -479,6 +479,13 @@ function GetFirstKonosament(pOrdId in t_orders.ord_id%type) return konosaments.k
 --- 02.02.2018 Функция выдачи финансовой информации по заказу
 function GetOrder_receivables (pOrdId in t_orders.ord_id%type,
                                pValueType in number) return number;
+                               
+type tTest is record (
+   id                  t_orders.ord_id%type);
+
+type tblTest is table of tTest;
+
+function Test return tblTest pipelined parallel_enable; 
                
 end MCSF_API;
 /
@@ -487,129 +494,209 @@ create or replace package body MCSF_API is
 --*********************************************************************************************************************
 -- Выдача списка заказов (orders)
 --*********************************************************************************************************************
-  function Get_Orders(pClntId       client_requests.clnt_clnt_id%type,        -- ID Клиента
-                      pDate_from    client_requests.ord_date%type,            -- Дата начала
-                      pDate_to      client_requests.ord_date%type,            -- Дата окончания
-                      pStatus_id    order_statuses.orst_id%type default Null,  -- Идентификатор статуса 
-                      pSortId           Char default null,   -- Сортировка по ИД заказа 
-                      pSortCreated_at   Char default null,   -- Сортировка по дате создани заказа
-                      pSortDate_from    Char default null,   -- Сортировка по дате отправки заказа
-                      pSortDate_to      Char default null,   -- Сортировка по дате прибытия заказа
-                      pSortReceivables  Char default null    -- Сортировка по сумме задолженности                      
-                      )
-           return tbl_Orders pipelined parallel_enable
- is   
- procedure ins_syslog is
-   pragma autonomous_transaction;
+ function Get_Orders(pClntId          client_requests.clnt_clnt_id%type, -- ID Клиента
+                     pDate_from       client_requests.ord_date%type, -- Дата начала
+                     pDate_to         client_requests.ord_date%type, -- Дата окончания
+                     pStatus_id       order_statuses.orst_id%type default Null, -- Идентификатор статуса 
+                     pSortId          Char default null, -- Сортировка по ИД заказа 
+                     pSortCreated_at  Char default null, -- Сортировка по дате создани заказа
+                     pSortDate_from   Char default null, -- Сортировка по дате отправки заказа
+                     pSortDate_to     Char default null, -- Сортировка по дате прибытия заказа
+                     pSortReceivables Char default null -- Сортировка по сумме задолженности                      
+                     ) return tbl_Orders
+   pipelined
+   parallel_enable is
+ 
+   lQuery varchar2(4000);
+ 
+   lCursor sys_refcursor;
+   lRow    t_Order;
+ 
  begin
-      insert into sys_logs sl (slog_id,msg,appl_appl_id,apmt_apmt_id)
-      values(slog_seq.nextval,to_char(pClntId) || ' ' || nvl(pSortId,'pSortId'),2,3);
-      commit;     
- end;
-      
- begin
-    -- ins_syslog;
-    for cur in (
-       select o.ord_id id,                                                     -- Код заказа (id)
-              lp.address_source||' '||cit_lp.def||' '||cou_lp.def place_from,  -- Адрес отправки
-              dp.address_source||' '||cit_dp.def||' '||cou_dp.def place_to,    -- Адрес назначения     
-              ost.def status,                                                  -- Оперативный статус
-              ost.orst_id status_id,                                           -- Идентификатор статуса
-              o.complete_date  date_closed,                                    -- Дата завершения заказа
-              GetOrder_receivables(o.ord_id,0) receivables,                    -- Сумма задолженности по заказу
-              GetOrder_receivables(o.ord_id,1) amount,                         -- Оплаченная сумма
-     
-              (select count(*) 
-                 from MESSAGES2CUSTOMERS t
-                where t.ord_ord_id = o.ord_id and
-                      t.send_date is not null and
-                      t.message_text not in ('NOT','message_text')
-              ) notification_count,            -- Кол-во уведомлений 
-              fr.def cargo_name,               -- Наименование груза
-              cl_otpr_o.client_name contractor,-- Наименование грузоотправителя
-              cl.ord_date created_at,          -- Дата создания заказа
-              lp.source_date_plan date_from,   -- Дата отправки заказа
-              dp.source_date_plan date_to,     -- Дата прибытия заказа
-              case when con.cont_number is Null then 
-                      null -- Номер контейнера еще не присвоен
-                   else 
-                      con.cont_number||' ('||ctp.def||')' 
-              end te_info,                                             -- Номер и тип ТЕ
-              mcsf_api.GetPOD_ord(o.ord_id) port_svh,                  -- Порт СВХ
-              cou_lp.def cargo_country                                 -- Страна отправления груза              
-        from t_orders o, 
-             clrq_orders co, 
-             client_requests cl,
-             t_loading_places lp,
-             t_loading_places dp,
-             vOrd_Frgt vofr,
-             freights fr,
-             conteiners con,
-             vOrder_Statuses_Last vsl,
-             cities cit_dp,
-             cities cit_lp,
-             countries cou_dp,
-             countries cou_lp,
-             clients cl_otpr_o,
-             conteiner_types ctp,
-             order_statuses ost
-       where cl.clnt_clnt_id   = pClntId 
-         and cl.ord_date between pDate_from and pDate_to 
-         and co.clrq_clrq_id   = cl.clrq_id 
-         and o.ord_id          = co.ord_ord_id
-         and o.cont_cont_id    = con.cont_id(+)
-         and con.cntp_cntp_id  = ctp.cntp_id(+)
-         and o.ord_id          = vsl.ord_ord_id(+)
-         and vsl.orst_orst_id  = ost.orst_id(+)
-         and (pStatus_id is Null or vsl.orst_orst_id = pStatus_id)
-         and o.ord_id          = vofr.ord_ord_id(+)
-         and vofr.frgt_frgt_id = fr.frgt_id(+)
-         -- Грузоотправитель
-         and o.ord_id          = lp.ord_ord_id(+)
-         and lp.source_type(+) = 0
-         and lp.ldpl_type(+)   = 0
-         and lp.del_date(+) is Null
-         and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
-         and lp.city_city_id   = cit_lp.city_id(+)
-         and cit_lp.cou_cou_id = cou_lp.cou_id(+)
-         -- Грузополучатель
-         and o.ord_id          = dp.ord_ord_id(+)
-         and dp.source_type(+) = 0
-         and dp.ldpl_type(+)   = 1
-         and dp.del_date(+) is Null
-         and dp.city_city_id   = cit_dp.city_id(+)
-         and cit_dp.cou_cou_id = cou_dp.cou_id(+)
-         order by 
-                  -- ИД заказа
-                  case when pSortId = 'asc' then o.ord_id
-                       else null end asc,
-                  case when pSortId = 'desc' then o.ord_id
-                       else null end desc,
-                  -- Дата создания заказа       
-                  case when pSortCreated_at = 'asc' then cl.ord_date
-                       else null end asc,
-                  case when pSortCreated_at = 'desc' then cl.ord_date
-                       else null end desc,
-                  -- Дата отправки заказа       
-                  case when pSortDate_from = 'asc' then lp.source_date_plan
-                       else null end asc,
-                  case when pSortDate_from = 'desc' then lp.source_date_plan
-                       else null end desc,
-                  -- плановая дата прибыьия заказа       
-                  case when pSortDate_to = 'asc' then dp.source_date_plan
-                       else null end asc,
-                  case when pSortDate_to = 'desc' then dp.source_date_plan
-                       else null end desc,
-                  -- Сумма задолженности по заказу       
-                  case when pSortReceivables = 'asc' then receivables
-                       else null end asc,
-                  case when pSortReceivables = 'desc' then receivables
-                       else null end desc                                       
-      )
-    loop
-      pipe row (cur);
-    end loop;
-    return;      
+ 
+   lQuery := 'select o.ord_id id,                                                     -- Код заказа (id)
+             lp.address_source||'' ''||cit_lp.def||'' ''||cou_lp.def place_from,  -- Адрес отправки
+             dp.address_source||'' ''||cit_dp.def||'' ''||cou_dp.def place_to,    -- Адрес назначения     
+             ost.def status,                                                  -- Оперативный статус
+             ost.orst_id status_id,                                           -- Идентификатор статуса
+             o.complete_date  date_closed,                                    -- Дата завершения заказа
+             mcsf_api.GetOrder_receivables(o.ord_id,0) receivables,                    -- Сумма задолженности по заказу
+             mcsf_api.GetOrder_receivables(o.ord_id,1) amount,                         -- Оплаченная сумма
+    
+             (select count(*) 
+                from MESSAGES2CUSTOMERS t
+               where t.ord_ord_id = o.ord_id and
+                     t.send_date is not null and
+                     t.message_text not in (''NOT'',''message_text'')
+             ) notification_count,            -- Кол-во уведомлений 
+             fr.def cargo_name,               -- Наименование груза
+             cl_otpr_o.client_name contractor,-- Наименование грузоотправителя
+             cl.ord_date created_at,          -- Дата создания заказа
+             lp.source_date_plan date_from,   -- Дата отправки заказа
+             dp.source_date_plan date_to,     -- Дата прибытия заказа
+             case when con.cont_number is Null then 
+                     null -- Номер контейнера еще не присвоен
+                  else 
+                     con.cont_number||'' (''||ctp.def||'')'' 
+             end te_info,                                             -- Номер и тип ТЕ
+             mcsf_api.GetPOD_ord(o.ord_id) port_svh,                  -- Порт СВХ
+             cou_lp.def cargo_country                                 -- Страна отправления груза              
+       from t_orders o, 
+            clrq_orders co, 
+            client_requests cl,
+            t_loading_places lp,
+            t_loading_places dp,
+            vOrd_Frgt vofr,
+            freights fr,
+            conteiners con,
+            vOrder_Statuses_Last vsl,
+            cities cit_dp,
+            cities cit_lp,
+            countries cou_dp,
+            countries cou_lp,
+            clients cl_otpr_o,
+            conteiner_types ctp,
+            order_statuses ost
+      where cl.clnt_clnt_id   = :pClntId 
+        and cl.ord_date between :pDate_from and :pDate_to 
+        and co.clrq_clrq_id   = cl.clrq_id 
+        and o.ord_id          = co.ord_ord_id
+        and o.cont_cont_id    = con.cont_id(+)
+        and con.cntp_cntp_id  = ctp.cntp_id(+)
+        and o.ord_id          = vsl.ord_ord_id(+)
+        and vsl.orst_orst_id  = ost.orst_id(+)
+        and (:pStatus_id is Null or vsl.orst_orst_id = :pStatus_id)
+        and o.ord_id          = vofr.ord_ord_id(+)
+        and vofr.frgt_frgt_id = fr.frgt_id(+)
+        -- Грузоотправитель
+        and o.ord_id          = lp.ord_ord_id(+)
+        and lp.source_type(+) = 0
+        and lp.ldpl_type(+)   = 0
+        and lp.del_date(+) is Null
+        and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
+        and lp.city_city_id   = cit_lp.city_id(+)
+        and cit_lp.cou_cou_id = cou_lp.cou_id(+)
+        -- Грузополучатель
+        and o.ord_id          = dp.ord_ord_id(+)
+        and dp.source_type(+) = 0
+        and dp.ldpl_type(+)   = 1
+        and dp.del_date(+) is Null
+        and dp.city_city_id   = cit_dp.city_id(+)
+        and cit_dp.cou_cou_id = cou_dp.cou_id(+)';
+ 
+   open lCursor for lQuery
+     using pClntId, pDate_from, pDate_to, pStatus_id, pStatus_id;
+ 
+   LOOP
+     FETCH lCursor
+       INTO lRow;
+     EXIT WHEN lCursor%NOTFOUND;
+     PIPE ROW(lRow);
+   END LOOP;
+ 
+   CLOSE lCursor;
+ 
+   /*for cur in (
+      select o.ord_id id,                                                     -- Код заказа (id)
+             lp.address_source||' '||cit_lp.def||' '||cou_lp.def place_from,  -- Адрес отправки
+             dp.address_source||' '||cit_dp.def||' '||cou_dp.def place_to,    -- Адрес назначения     
+             ost.def status,                                                  -- Оперативный статус
+             ost.orst_id status_id,                                           -- Идентификатор статуса
+             o.complete_date  date_closed,                                    -- Дата завершения заказа
+             GetOrder_receivables(o.ord_id,0) receivables,                    -- Сумма задолженности по заказу
+             GetOrder_receivables(o.ord_id,1) amount,                         -- Оплаченная сумма
+    
+             (select count(*) 
+                from MESSAGES2CUSTOMERS t
+               where t.ord_ord_id = o.ord_id and
+                     t.send_date is not null and
+                     t.message_text not in ('NOT','message_text')
+             ) notification_count,            -- Кол-во уведомлений 
+             fr.def cargo_name,               -- Наименование груза
+             cl_otpr_o.client_name contractor,-- Наименование грузоотправителя
+             cl.ord_date created_at,          -- Дата создания заказа
+             lp.source_date_plan date_from,   -- Дата отправки заказа
+             dp.source_date_plan date_to,     -- Дата прибытия заказа
+             case when con.cont_number is Null then 
+                     null -- Номер контейнера еще не присвоен
+                  else 
+                     con.cont_number||' ('||ctp.def||')' 
+             end te_info,                                             -- Номер и тип ТЕ
+             mcsf_api.GetPOD_ord(o.ord_id) port_svh,                  -- Порт СВХ
+             cou_lp.def cargo_country                                 -- Страна отправления груза              
+       from t_orders o, 
+            clrq_orders co, 
+            client_requests cl,
+            t_loading_places lp,
+            t_loading_places dp,
+            vOrd_Frgt vofr,
+            freights fr,
+            conteiners con,
+            vOrder_Statuses_Last vsl,
+            cities cit_dp,
+            cities cit_lp,
+            countries cou_dp,
+            countries cou_lp,
+            clients cl_otpr_o,
+            conteiner_types ctp,
+            order_statuses ost
+      where cl.clnt_clnt_id   = pClntId 
+        and cl.ord_date between pDate_from and pDate_to 
+        and co.clrq_clrq_id   = cl.clrq_id 
+        and o.ord_id          = co.ord_ord_id
+        and o.cont_cont_id    = con.cont_id(+)
+        and con.cntp_cntp_id  = ctp.cntp_id(+)
+        and o.ord_id          = vsl.ord_ord_id(+)
+        and vsl.orst_orst_id  = ost.orst_id(+)
+        and (pStatus_id is Null or vsl.orst_orst_id = pStatus_id)
+        and o.ord_id          = vofr.ord_ord_id(+)
+        and vofr.frgt_frgt_id = fr.frgt_id(+)
+        -- Грузоотправитель
+        and o.ord_id          = lp.ord_ord_id(+)
+        and lp.source_type(+) = 0
+        and lp.ldpl_type(+)   = 0
+        and lp.del_date(+) is Null
+        and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
+        and lp.city_city_id   = cit_lp.city_id(+)
+        and cit_lp.cou_cou_id = cou_lp.cou_id(+)
+        -- Грузополучатель
+        and o.ord_id          = dp.ord_ord_id(+)
+        and dp.source_type(+) = 0
+        and dp.ldpl_type(+)   = 1
+        and dp.del_date(+) is Null
+        and dp.city_city_id   = cit_dp.city_id(+)
+        and cit_dp.cou_cou_id = cou_dp.cou_id(+)
+        order by 
+                 -- ИД заказа
+                 case when pSortId = 'asc' then o.ord_id
+                      else null end asc,
+                 case when pSortId = 'desc' then o.ord_id
+                      else null end desc,
+                 -- Дата создания заказа       
+                 case when pSortCreated_at = 'asc' then cl.ord_date
+                      else null end asc,
+                 case when pSortCreated_at = 'desc' then cl.ord_date
+                      else null end desc,
+                 -- Дата отправки заказа       
+                 case when pSortDate_from = 'asc' then lp.source_date_plan
+                      else null end asc,
+                 case when pSortDate_from = 'desc' then lp.source_date_plan
+                      else null end desc,
+                 -- плановая дата прибыьия заказа       
+                 case when pSortDate_to = 'asc' then dp.source_date_plan
+                      else null end asc,
+                 case when pSortDate_to = 'desc' then dp.source_date_plan
+                      else null end desc,
+                 -- Сумма задолженности по заказу       
+                 case when pSortReceivables = 'asc' then receivables
+                      else null end asc,
+                 case when pSortReceivables = 'desc' then receivables
+                      else null end desc                                       
+     )
+   loop
+     pipe row (cur);
+   end loop;*/
+   return;
  end;
 --*********************************************************************************************************************
 -- Получение информации по заказу (orders_get)
@@ -2026,6 +2113,30 @@ begin
      receivables := vSummaOplacheno;     
   end if;          
   return  receivables;
+end;
+
+function Test return tblTest
+  pipelined
+  parallel_enable is
+  lCursor sys_refcursor;
+  lRow    tTest;
+  lTestNum number := 1075567;
+  lTestNum1 number := 1075568;
+begin
+
+  OPEN lCursor FOR 'select mcsf_api.GetOrder_receivables(t.ord_id,1) id -- Тестовы коммент
+  from orders t 
+  where t.ord_id in (:lTestNum, :lTestNum1)' using lTestNum, lTestNum1;
+
+  LOOP
+    FETCH lCursor
+      INTO lRow;
+    EXIT WHEN lCursor%NOTFOUND;
+    PIPE ROW(lRow);
+  END LOOP;
+
+  CLOSE lCursor;
+  return;
 end;
                                    
 end MCSF_API;

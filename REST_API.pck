@@ -178,6 +178,8 @@ CREATE OR REPLACE PACKAGE REST_API AS
   -- Коллекции контрагентов. Получение коллекции. п. 4.3.1.1 в ТЗ на разработку АПИ (операция consignees)
   -- 
   function consignees return rest_api_err;
+  
+  function Test return rest_api_err;
 
   /*
    Журнал протоколирования ошибок и тестирования
@@ -891,6 +893,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     --lCurrentUserId   := APEX_UTIL.GET_USER_ID(lCurrentUserName);
     lCompanyId := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
+    
   
     -- filters
     begin
@@ -901,7 +904,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       begin
          lCreatedType := apex_json.get_varchar2(p_path    => 'filter.created_at.type',
                                                 p_default => null); 
-        ins_syslog(mess => 'lCreatedType - ' || lCreatedType, logdate => sysdate);
+                                                
          if lCreatedType = 'between' then
             begin
                lCreatedFrom := apex_json.get_date(p_path    => 'filter.created_at.value[1]',
@@ -916,8 +919,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
            lCreatedFrom := apex_json.get_date(p_path    => 'filter.created_at.value',
                                               p_format  => PkgDefaultDateFormat);
          end if;
-    --  ins_syslog(mess => 'lCreatedFrom - ' || to_char(lCreatedFrom,'dd.mm.yyyy'), logdate => sysdate); 
-    --  ins_syslog(mess => 'lCreatedTo - ' || to_char(lCreatedTo,'dd.mm.yyyy'), logdate => sysdate);                                                                                                                                                                                                                       
+                                                                                                                                                                                                                               
       exception
         when others then
           ins_syslog(mess => SQLERRM, logdate => sysdate);                                               
@@ -964,7 +966,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lFiltersPrevious := apex_util.get_preference(lCollectionName ||
                                                  apex_application.g_instance,
                                                  lCurrentUserName);
-    --ins_syslog(mess => 'lFiltersPrevious - ' || lFiltersPrevious, logdate => sysdate);
+                                                 
     lFiltersState := 'lPeriodFrom=' ||
                      to_char(lPeriodFrom, PkgDefaultDateFormat) || ';' ||
                      'lPeriodTo=' ||
@@ -975,7 +977,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                      'lSortDateFrom=' || to_char(lSortDateFrom) || ';' ||
                      'lSortDateTo=' || to_char(lSortDateTo) || ';' ||
                      'lSortReceivables=' || to_char(lSortReceivables) || ';';
-     ins_syslog('lFiltersState - ' || lFiltersState, sysdate);
+                     
     if lFiltersPrevious = lFiltersState then
       lShouldResetCollection := false;
     end if;
@@ -3081,7 +3083,67 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   end consignees;
 
   -- Коллекции контрагентов. Получение коллекции. п. 4.3.1.1 в ТЗ на разработку АПИ (операция consignees)
-  -- Ю.К. 
+  -- Ю.К.
+  
+  function Test return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    lOffset number;
+    lLimit  number;
+  
+    lColectionCount number := 0;
+  
+  begin
+    -- filters
+    begin
+      lOffset := apex_json.get_number(p_path    => 'offset',
+                                      p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit',
+                                      p_default => PkgDefaultLimit);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+  
+  
+    if lIsSuccess then
+      apex_json.open_array('data');
+    
+      for l_c in (select *
+                    from (select ROWNUM seq_id, t.*
+                            from TABLE(mcsf_api.Test) t) c
+                   where c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+      
+        apex_json.open_object;
+      
+        apex_json.write('seq_id', l_c.seq_id, true);
+        apex_json.write('id', l_c.id, true);
+      
+        apex_json.close_object;
+      end loop;
+    end if;
+  
+    apex_json.close_array;
+  
+    -- Pager
+    apex_json.open_object('pager');
+  
+    apex_json.write('offset', lOffset);
+  
+    select count(t.id)
+      into lColectionCount
+      from TABLE(mcsf_api.Test) t;
+  
+    apex_json.write('total', lColectionCount);
+  
+    apex_json.close_object();
+  
+    return lError;
+  end; 
 
   -- ================================================
   /*
