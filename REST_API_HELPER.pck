@@ -56,6 +56,8 @@ function PrepareSortFilter(pFilterName varchar, pFileldName varchar default null
 function PrepareSqlFilter(pFilterName varchar, pFileldName varchar default null) return varchar2;
 
 procedure AddFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2);
+
+procedure AddSortFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2);
  
 end REST_API_HELPER;
 /
@@ -325,8 +327,7 @@ function PrepareSqlFilter(pFilterName varchar, pFileldName varchar default null)
   lTempNum number;
   lDateFormat varchar2(100);
   lRes varchar2(1000);
-begin
-  
+begin 
   -- Получаем ноду
   lValNode := apex_json.get_value('filter.' || pFilterName || '.value');
   
@@ -356,7 +357,9 @@ begin
 
        elsif lValNode.kind = 5 then
            lValType := 'varchar2';
-           lVal := lValNode.varchar2_value;
+           lVal := replace(lValNode.varchar2_value, '''', '"');
+           
+           if lType = 'like' then lVal := '%' || lVal || '%'; end if;
            
            -- Проверяем является ли тип датой
            if IsDate(lVal, lDateFormat) then lValType := 'date'; end if;
@@ -411,7 +414,7 @@ begin
 
              elsif lValNode.kind = 5 then
                  lValType := 'array of varchar2';
-                 lVal := lValNode.varchar2_value;
+                 lVal := replace(lValNode.varchar2_value, '''', '"');
                  
                  -- Проверяем является ли тип датой
                  if IsDate(lVal, lDateFormat) then lValType := 'array of date'; end if;
@@ -430,6 +433,23 @@ begin
              lRes := '(' || lRes || ')';
            end if;
            
+    end if;
+    
+    if lRes is null then 
+      -- Проверяем явялется ли фильтр просто строкой
+      lVal := apex_json.get_varchar2('filter.' || pFilterName, null);
+      
+      if lVal is not null then
+        lVal := replace(lVal, '''', '"');
+        
+        if IsDate(lVal, lDateFormat) then lValType := 'date'; end if;
+        
+        if lValType = 'date' then
+          lRes := lRes || 'to_date(''' || lVal || ''',' || '''' || lDateFormat || '''' || ')';
+        else
+          lRes := lRes || '''' || lVal || '''';
+        end if;
+      end if; 
     end if;
     
     if lRes is null then return lRes; end if;
@@ -455,6 +475,26 @@ begin
   if lTemp is not null then
     
      if pFilters is not null then pFilters := pFilters || ' and '; end if;
+     
+     pFilters := pFilters || lTemp;
+     lTemp := null;
+     
+  end if;
+  
+  return;
+end;
+
+procedure AddSortFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2) is
+  lDate date;
+  lRes boolean := false;
+  lTemp varchar2(250);
+begin
+  
+  lTemp := rest_api_helper.PrepareSortFilter(pFilterName, pFileldName);
+  
+  if lTemp is not null then
+    
+     if pFilters is not null then pFilters := pFilters || ', '; end if;
      
      pFilters := pFilters || lTemp;
      lTemp := null;

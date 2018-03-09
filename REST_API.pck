@@ -548,8 +548,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end if;
   
     apex_json.close_object;
+    
+    sys.htp.init;
+    sys.owa_util.mime_header('application/json', false, 'UTF-8');
+    sys.owa_util.http_header_close;
   
-    --htp.p(APEX_JSON.get_clob_output);
     HtpPrn(APEX_JSON.get_clob_output);
   
     apex_json.free_output;
@@ -803,19 +806,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lOffset number;
     lLimit  number;
     
-    lFiltersState    varchar2(255) := null;
-    lFiltersPrevious varchar2(255) := null;
+    lFiltersState    varchar2(4000) := null;
+    lFiltersPrevious varchar2(4000) := null;
   
     lShouldResetCollection boolean := true;
     lColectionCount        number := 0;
     
     -- Filters
-    lFilter varchar2(2000);
+    lFilter varchar2(4000);
+    lQueryFilter varchar2(200);
     
     -- Sort
     lSorts varchar2(200);
-    
-    lTemp varchar2(250);
     
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
@@ -826,49 +828,59 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       lOffset := apex_json.get_number('offset', PkgDefaultOffset);
       lLimit  := apex_json.get_number('limit', PkgDefaultLimit);
                                       
-      lFilter := rest_api_helper.PrepareSqlFilter('created_at', 'cl.ord_date');
+      rest_api_helper.AddFilter('id', 'o.ord_id', lFilter); -- Идентификатор заказа
       
-      lTemp := rest_api_helper.PrepareSqlFilter('date_from', 'lp.source_date_plan');
-      if lTemp is not null then
-        if lFilter is not null then lFilter := lFilter || ' and '; end if;
-        lFilter := lFilter || lTemp;
-        lTemp := null;
-      end if;
+      rest_api_helper.AddFilter('created_at', 'cl.ord_date', lFilter); -- Дата создания заказа
       
-      lTemp := rest_api_helper.PrepareSqlFilter('date_to', 'dp.source_date_plan');
-      if lTemp is not null then
-        if lFilter is not null then lFilter := lFilter || ' and '; end if;
-        lFilter := lFilter || lTemp;
-        lTemp := null;
-      end if;
+      rest_api_helper.AddFilter('date_from', 'lp.source_date_plan', lFilter); -- Дата отправки заказа
       
-      lTemp := rest_api_helper.PrepareSqlFilter('status_id', 'ost.orst_id');
-      if lTemp is not null then
-        if lFilter is not null then lFilter := lFilter || ' and '; end if;
-        lFilter := lFilter || lTemp;
-        lTemp := null;
-      end if;
+      rest_api_helper.AddFilter('date_to', 'dp.source_date_plan', lFilter); -- Дата прибытия заказа
       
-      lTemp := rest_api_helper.PrepareSqlFilter('date_closed', 'o.complete_date');
-      if lTemp is not null then
-        if lFilter is not null then lFilter := lFilter || ' and '; end if;
-        lFilter := lFilter || lTemp;
-        lTemp := null;
-      end if;
+      rest_api_helper.AddFilter('status', 'ost.def', lFilter); -- Cтатус
       
-      lTemp := rest_api_helper.PrepareSqlFilter('id', 'o.ord_id');
-      if lTemp is not null then
-        if lFilter is not null then lFilter := lFilter || ' and '; end if;
-        lFilter := lFilter || lTemp;
-        lTemp := null;
-      end if;
+      rest_api_helper.AddFilter('status_id', 'ost.orst_id', lFilter); -- Идентификатор статуса
       
-      lTemp := rest_api_helper.PrepareSqlFilter('shipment_date', 'shipment_date'); -- ???
-      if lTemp is not null then
-        if lFilter is not null then lFilter := lFilter || ' and '; end if;
-        lFilter := lFilter || lTemp;
-        lTemp := null;
-      end if;
+      rest_api_helper.AddFilter('date_closed', 'o.complete_date', lFilter); -- Дата закрытия заказа
+      
+      --rest_api_helper.AddFilter('shipment_date', 'shipment_date', lFilter); -- Дата погрузки ?
+      
+      rest_api_helper.AddFilter('te_number', 'con.cont_number||'' (''||ctp.def||'')''', lFilter); -- Номер ТЕ (с индексом)
+      
+      rest_api_helper.AddFilter('te_info', 'con.cont_number||'' (''||ctp.def||'')''', lFilter); -- Номер ТЕ (с индексом)
+      
+      --rest_api_helper.AddFilter('unload_transhipment_plan_date', 'unload_transhipment_plan_date', lFilter); -- Дата подхода в порт перевалки ?
+      
+      --rest_api_helper.AddFilter('unload_destination_plan_date', 'unload_destination_plan_date', lFilter); -- Дата подхода в порт/СВХ назначения ?
+      
+      --rest_api_helper.AddFilter('unload_destination_fact_date', 'unload_destination_fact_date', lFilter); -- Дата выгрузки в порту/СВХ назначения (факт) ?
+      
+      --rest_api_helper.AddFilter('date_dt', 'date_dt', lFilter); -- Дата подачи ДТ ?
+      
+      --rest_api_helper.AddFilter('date_release_dt', 'date_release_dt', lFilter); -- Дата выпуска ДТ ?
+      
+      --rest_api_helper.AddFilter('date_export_port', 'date_export_port', lFilter); -- Дата вывоза из порта ?
+      
+      --rest_api_helper.AddFilter('date_return_empty', 'date_return_empty', lFilter); -- Дата возврата порожнего ?
+      
+      --rest_api_helper.AddFilter('date_unloading_warehouse', 'date_unloading_warehouse', lFilter); -- Дата выгрузки на склад ?
+      
+      --rest_api_helper.AddFilter('dt_number', 'dt_number', lFilter); -- Номер ДТ ?
+      
+      --rest_api_helper.AddFilter('am_number', 'am_number', lFilter); -- Номер АМ ?
+      
+      rest_api_helper.AddFilter('fio_driver', 'fio_driver', lFilter); -- ФИО водителя ?
+      
+      rest_api_helper.AddFilter('cargo_name', 'fr.def', lFilter); -- Наименование груза
+      
+      rest_api_helper.AddFilter('departure_country', 'cou_lp.def', lFilter); -- Страна отправления груза
+      
+      rest_api_helper.AddFilter('port_svh', 'mcsf_api.GetPOD_ord(o.ord_id)', lFilter); -- Порт/СВХ
+      
+      rest_api_helper.AddFilter('place_from', 'lp.address_source||'' ''||cit_lp.def||'' ''||cou_lp.def', lFilter); -- Адрес отправки 
+      
+      rest_api_helper.AddFilter('place_to', 'dp.address_source||'' ''||cit_dp.def||'' ''||cou_dp.def place_to', lFilter); -- Адрес назначения      
+      
+      lQueryFilter := replace(apex_json.get_varchar2('data.query', null), '''', '"');
     
     exception
       when others then
@@ -878,29 +890,16 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
     -- Order by
     begin
-      if rest_api_helper.PrepareSortFilter('id') is not null then
-        lSorts := rest_api_helper.PrepareSortFilter('id', 'o.ord_id');
-      end if;
       
-      if rest_api_helper.PrepareSortFilter('created_at') is not null then
-        if lSorts is not null then lSorts := lSorts || ', '; end if;
-        lSorts := lSorts || rest_api_helper.PrepareSortFilter('created_at', 'cl.ord_date');
-      end if;
+      rest_api_helper.AddSortFilter('id', 'o.ord_id', lSorts);
       
-      if rest_api_helper.PrepareSortFilter('date_from') is not null then
-        if lSorts is not null then lSorts := lSorts || ', '; end if;
-        lSorts := lSorts || rest_api_helper.PrepareSortFilter('date_from', 'lp.source_date_plan');
-      end if;
+      rest_api_helper.AddSortFilter('created_at', 'cl.ord_date', lSorts);
       
-      if rest_api_helper.PrepareSortFilter('date_to') is not null then
-        if lSorts is not null then lSorts := lSorts || ', '; end if;
-        lSorts := lSorts || rest_api_helper.PrepareSortFilter('date_to', 'dp.source_date_plan');
-      end if;
+      rest_api_helper.AddSortFilter('date_from', 'lp.source_date_plan', lSorts);
       
-      if rest_api_helper.PrepareSortFilter('receivables') is not null then
-        if lSorts is not null then lSorts := lSorts || ', '; end if;
-        lSorts := lSorts || rest_api_helper.PrepareSortFilter('receivables');
-      end if;
+      rest_api_helper.AddSortFilter('date_to', 'dp.source_date_plan', lSorts);
+      
+      rest_api_helper.AddSortFilter('receivables', 'receivables', lSorts);
     
     exception
       when others then
@@ -911,7 +910,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     -- Проверяем, изменились ли фильтры
     lFiltersPrevious := apex_util.get_preference(lCollectionName || apex_application.g_instance, lCurrentUserName);
                                                  
-    lFiltersState := '' || lFilter || lSorts;
+    lFiltersState := '' || lFilter || lQueryFilter ||  lSorts;
                      
     if lFiltersPrevious = lFiltersState then
       lShouldResetCollection := false;
@@ -928,70 +927,44 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           APEX_COLLECTION.DELETE_COLLECTION(lCollectionName);
        end if;
        APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
-        for l_c in (select *
+        for lRc in (select *
                       from TABLE(mcsf_api.get_orders(pClntId => lCompanyId,
                                                      pFilter => lFilter,
+                                                     pQueryFilter => lQueryFilter,
                                                      pSortFilter => lSorts
                                                      ))) loop
           APEX_COLLECTION.ADD_MEMBER(p_collection_name => lCollectionName,
-                                     p_c001            => l_c.id,
-                                     p_c002            => l_c.place_from,
-                                     p_c003            => l_c.place_to,
-                                     p_c004            => l_c.status,
-                                     p_c005            => l_c.status_id,
-                                     p_c017            => l_c.date_closed,
-                                     p_c006            => l_c.receivables,
-                                     p_c007            => l_c.amount,
-                                     p_c008            => l_c.notification_count,
-                                     p_c009            => l_c.cargo_name,
-                                     p_c010            => l_c.contractor,
-                                     p_c011            => to_char(l_c.created_at,PkgDefaultDateFormat),
-                                     p_c012            => to_char(l_c.date_from,PkgDefaultDateFormat),
-                                     p_c013            => to_char(l_c.date_to,PkgDefaultDateFormat),
-                                     p_c014            => l_c.te_info,
-                                     p_c015            => l_c.port_svh,
-                                     p_c016            => l_c.cargo_country);
+                                     p_c001            => lRc.id,
+                                     p_c002            => lRc.place_from,
+                                     p_c003            => lRc.place_to,
+                                     p_c004            => lRc.status,
+                                     p_c005            => lRc.status_id,
+                                     p_c006            => lRc.receivables,
+                                     p_c007            => lRc.amount,
+                                     p_c008            => lRc.notification_count,
+                                     p_c009            => lRc.cargo_name,
+                                     p_c010            => lRc.contractor,
+                                     p_c011            => to_char(lRc.created_at,PkgDefaultDateFormat),
+                                     p_c012            => to_char(lRc.date_from,PkgDefaultDateFormat),
+                                     p_c013            => to_char(lRc.date_to,PkgDefaultDateFormat),
+                                     p_c014            => lRc.te_info,
+                                     p_c015            => lRc.port_svh,
+                                     p_c016            => lRc.departure_country,
+                                     p_c017            => lRc.date_closed);
         end loop;
       
       end if;
     
       -- Постраничный вывод данных из коллекции
-      /*
-      open lRc for
-        select c.seq_id "seq_id",
-               to_number(c.c001) "id",
-               c.c002 "place_from",
-               c.c003 "place_to",
-               c.c004 "status",
-               to_number(c.c005) "status_id",
-               to_number(c.c006) "receivables",
-               to_number(c.c007) "amount",
-               to_number(c.c008) "notification_count",
-               c.c009 "cargo_name",
-               c.c010 "contractor",
-               c.c011 "created_at",
-               c.c012 "date_from",
-               c.c013 "date_to",
-               c.c014 "te_info",
-               c.c015 "port_svh",
-               c.c016 "cargo_country"
-        
-          from apex_collections c
-         where c.collection_name = lCollectionName
-           and c.seq_id > lOffset
-           and c.seq_id <= lOffset + lLimit;
-      
-      apex_json.write('data', lRc);*/
     
       apex_json.open_array('data');
     
-      for l_c in (select c.seq_id "seq_id",
+      for lRc in (select c.seq_id "seq_id",
                          to_number(c.c001) "id",
                          c.c002 "place_from",
                          c.c003 "place_to",
                          c.c004 "status",
-                         to_number(c.c005) "status_id",
-                         c.c017 "date_closed",                         
+                         to_number(c.c005) "status_id",                         
                          to_number(c.c006) "receivables",
                          to_number(c.c007) "amount",
                          to_number(c.c008) "notification_count",
@@ -1002,7 +975,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c013 "date_to",
                          c.c014 "te_info",
                          c.c015 "port_svh",
-                         c.c016 "cargo_country"
+                         c.c016 "departure_country",
+                         c.c017 "date_closed"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1011,24 +985,24 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
         apex_json.open_object;
       
-        apex_json.write('seq_id', l_c."seq_id", true);
-        apex_json.write('id', l_c."id", true);
-        apex_json.write('place_from', l_c."place_from", true);
-        apex_json.write('place_to', l_c."place_to", true);
-        apex_json.write('status', l_c."status", true);
-        apex_json.write('status_id', l_c."status_id", true);
-        apex_json.write('date_closed', l_c."date_closed",true);              
-        apex_json.write('receivables', l_c."receivables", true);
-        apex_json.write('amount', l_c."amount", true);
-        apex_json.write('notification_count', l_c."notification_count", true);
-        apex_json.write('cargo_name', l_c."cargo_name", true);
-        apex_json.write('contractor', l_c."contractor", true);
-        apex_json.write('created_at', l_c."created_at", true);
-        apex_json.write('date_from', l_c."date_from", true);
-        apex_json.write('date_to', l_c."date_to", true);
-        apex_json.write('te_info', l_c."te_info", true);
-        apex_json.write('port_svh', l_c."port_svh", true);
-        apex_json.write('cargo_country', l_c."cargo_country", true);
+        apex_json.write('seq_id', lRc."seq_id", true);
+        apex_json.write('id', lRc."id", true);
+        apex_json.write('place_from', lRc."place_from", true);
+        apex_json.write('place_to', lRc."place_to", true);
+        apex_json.write('status', lRc."status", true);
+        apex_json.write('status_id', lRc."status_id", true);
+        apex_json.write('date_closed', lRc."date_closed",true);              
+        apex_json.write('receivables', lRc."receivables", true);
+        apex_json.write('amount', lRc."amount", true);
+        apex_json.write('notification_count', lRc."notification_count", true);
+        apex_json.write('cargo_name', lRc."cargo_name", true);
+        apex_json.write('contractor', lRc."contractor", true);
+        apex_json.write('created_at', lRc."created_at", true);
+        apex_json.write('date_from', lRc."date_from", true);
+        apex_json.write('date_to', lRc."date_to", true);
+        apex_json.write('te_info', lRc."te_info", true);
+        apex_json.write('port_svh', lRc."port_svh", true);
+        apex_json.write('departure_country', lRc."departure_country", true);
       
         apex_json.close_object;
       
@@ -1219,7 +1193,6 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.close_object;
     
       if cou = 0 then
-        lIsSuccess := false;
         lError     := Errors(8);
       end if; -- Not Found, 17.07.2017
     
@@ -1541,7 +1514,6 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.close_array;
       exception
         when others then
-          lIsSuccess := false;
           htp.print(SQLERRM);
           lError     := Errors(8);
       end;
@@ -1762,7 +1734,6 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       exception
         when others then
-          lIsSuccess := false;
           lError     := Errors(3);
       end;
     end if;
