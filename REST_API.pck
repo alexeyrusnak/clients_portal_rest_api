@@ -6,6 +6,7 @@ CREATE OR REPLACE PACKAGE REST_API AS
   WorkspaceName varchar2(255) := 'REST'; -- Воркспейс
 
   PkgDefaultDateFormat varchar2(255) := 'YYYY-MM-DD HH24:MI:SS'; -- Формат даты при конвертациях в строку и обратно
+  PkgDefaultDateShortFormat varchar2(255) := 'YYYY-MM-DD'; -- Формат даты при конвертациях в строку и обратно
   PkgDefaultOffset     number := 1; -- Значение по умолчанию для переменной offset
   PkgDefaultLimit      number := 10; -- Значение по умолчанию для переменной limit
 
@@ -305,6 +306,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           else
             lIsSuccess := false;
             lError     := Errors(2);
+          end if;
+        WHEN 'test' THEN
+          lError := Test();
+          if lError.success != 1 then
+              lIsSuccess := false;
           end if;
         -- П.4.7.3 ТЗ на АПИ - получение списка заказов
         WHEN 'orders' THEN
@@ -787,174 +793,114 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function Orders return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-  
-    --lCurrentUserId   number;
+    
     lCurrentUserName varchar2(255);
     lCompanyId       number;
   
     lCollectionName   varchar2(255) := 'ORDERS';
     lCollectionExists boolean;
   
-    --lRc sys_refcursor;
-  
     lOffset number;
     lLimit  number;
-  
-    lPeriodFrom date := SYSDATE - PkgDefaultPeriodIndays;
-    lPeriodTo   date := SYSDATE;
-    lStatusId   number := null;
     
-    -- 30.01.2018 - фильтр по дате создания заказа created_at
-    lCreatedFrom date := SYSDATE - PkgDefaultPeriodIndays;
-    lCreatedTo   date := sysdate; 
-    lCreatedType varchar2(7); 
-    -- Фильтр по дате отправки заказа
-    lDate_fromStart    date := null;
-    lDate_fromEnd      date := null;
-    lDate_fromType     varchar2(7);
-    -- Фильтр по дате прибытия заказа
-    lDate_toStart      date := null;
-    lDate_toEnd        date := null;
-    lDate_toType       varchar2(7);
-    -- Фильтр по статусу заказа
-    lStatus_id         varchar2(10);
-    lStatus_idType     varchar2(7);
-        -- Фильтр по дате закрытия заказа date_closed
-    lDate_closedStart date := null;
-    lDate_closedEnd   date := null;
-    lDate_closedType  varchar2(7);
-    -- Фильтр по ИД заказа
-    lOrderId         t_orders.ord_id%type;
-    lOrderIdType     varchar2(7);
-    -- Фильтр по дате погрузки
-    lShipment_dateStart date := null;
-    lShipment_dateEnd   date := null;
-    lShipment_dateType  varchar2(7);
-    -- Фильтр по номеру ТЕ (контейнера) с индексом
-    lTE_Number      varchar2(50);
-    lTE_NumberType  varchar2(7);
-    -- Фильтр по дате подхода в порт перевалки
-   lUnloadTranshPlanDateStart date := null;
-   lUnloadTranshPlanDateEnd   date := null;
-   lUnloadTranshPlanDateType  varchar2(7);
-   -- Фильтр по дате подхода в порт назначения
-   lUnloadDestPlanDateStart date := null;
-   lUnloadDestPlanDateEnd   date := null;
-   lUnloadDestPlanDateType  varchar2(7);
-   -- Фильтр по дате выгрузки в портцу назначения (факт)
-   lUnloadDestFactDateStart  date := null;
-   lUnloadDestFactDateEnd    date := null;
-   lUnloadDestFactDateType   varchar2(7);
-   -- Фильтр по дате подачи ТД
-   lDate_dtStart  date := null;
-   lDate_dtEnd    date := null;
-   lDate_dtType   varchar2(7);
-   -- Фильтр по дате выпуска ТД
-   lDate_release_dtStart date := null;
-   lDate_release_dtEnd   date := null;
-   lDate_release_dtType  varchar2(7);
-   -- Фильтр по дате выоза из порта
-   lDate_export_portStart date := null;
-   lDate_export_portEnd   date := null;
-   lDate_export_port      varchar2(7);
-   -- Фильтр по дате возврата порожнего контейнера
-   lDate_return_emptyStart date := null;
-   lDate_return_emptyEnd   date := null;
-   lDate_return_emptyType  varchar2(7);
-   -- Фильтр по дате выгрузки на склад
-   lDate_unloading_warehouseStart date := null;
-   lDate_unloading_warehouseEnd   date := null;
-   lDate_unloading_warehouseType  varchar2(7);
-   -- Фильтр по номеру ТД 
-   lDT_number varchar2(50);
-   lDT_numberType varchar2(7);
-   -- Фильтр по номеру машины на вывоз контейнера
-   lAM_number varchar2(50);
-   lAM_numberType varchar2(7);
-   -- Фильтр по ФИО водителя
-   lFIO_driver varchar2(50);
-   lFIO_driverType varchar2(7);
-   -- Фильтр по наименованию груза
-   lCargo_name  varchar2(100);
-   lCargo_nameType varchar2(7);
-    -- Переменные сортировки данных на выходе
-    lSortId          varchar2(4) := null; -- сортировка по ИД заказов
-    lSortCreatedAt   varchar2(4) := null; -- сортировка по дате создания заказов
-    lSortDateFrom    varchar2(4) := null; -- сортировка по дате отправки заказов
-    lSortDateTo      varchar2(4) := null; -- сортировка по дате прибытия заказов
-    lSortReceivables varchar2(4) := null; -- сортировк апо умме задолжнности по заказам
-  
     lFiltersState    varchar2(255) := null;
     lFiltersPrevious varchar2(255) := null;
   
     lShouldResetCollection boolean := true;
     lColectionCount        number := 0;
+    
+    -- Filters
+    lFilter varchar2(2000);
+    
+    -- Sort
+    lSorts varchar2(200);
+    
+    lTemp varchar2(250);
+    
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
-    --lCurrentUserId   := APEX_UTIL.GET_USER_ID(lCurrentUserName);
     lCompanyId := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
     
-  
-    -- filters
+    -- Filters
     begin
-      lOffset := apex_json.get_number(p_path    => 'offset',
-                                      p_default => PkgDefaultOffset);
-      lLimit  := apex_json.get_number(p_path    => 'limit',
-                                      p_default => PkgDefaultLimit);
-      begin
-         lCreatedType := apex_json.get_varchar2(p_path    => 'filter.created_at.type',
-                                                p_default => null); 
-                                                
-         if lCreatedType = 'between' then
-            begin
-               lCreatedFrom := apex_json.get_date(p_path    => 'filter.created_at.value[1]',
-                                                  p_format  => PkgDefaultDateFormat,
-                                                  p_default => SYSDATE - PkgDefaultPeriodIndays);
-               lCreatedTo := apex_json.get_date(p_path    => 'filter.created_at.value[2]',
-                                                p_format  => PkgDefaultDateFormat,
-                                                p_default => SYSDATE - PkgDefaultPeriodIndays);
-            end; 
-         else
-           -- период отбора данных: =, !=, >= и т.д.
-           lCreatedFrom := apex_json.get_date(p_path    => 'filter.created_at.value',
-                                              p_format  => PkgDefaultDateFormat);
-         end if;
-                                                                                                                                                                                                                               
-      exception
-        when others then
-          ins_syslog(mess => SQLERRM, logdate => sysdate);                                               
-      end;                                               
-      lPeriodFrom := apex_json.get_date(p_path    => 'filter.date_from.value',
-                                        p_format  => PkgDefaultDateFormat,
-                                        p_default => SYSDATE -
-                                                     PkgDefaultPeriodIndays);
-    
-      lPeriodTo := apex_json.get_date(p_path    => 'filter.date_to.value',
-                                      p_format  => PkgDefaultDateFormat,
-                                      p_default => SYSDATE);
-    
-      lStatusId := apex_json.get_number(p_path    => 'filter.status_id',
-                                        p_default => null);
+      lOffset := apex_json.get_number('offset', PkgDefaultOffset);
+      lLimit  := apex_json.get_number('limit', PkgDefaultLimit);
+                                      
+      lFilter := rest_api_helper.PrepareSqlFilter('created_at', 'cl.ord_date');
+      
+      lTemp := rest_api_helper.PrepareSqlFilter('date_from', 'lp.source_date_plan');
+      if lTemp is not null then
+        if lFilter is not null then lFilter := lFilter || ' and '; end if;
+        lFilter := lFilter || lTemp;
+        lTemp := null;
+      end if;
+      
+      lTemp := rest_api_helper.PrepareSqlFilter('date_to', 'dp.source_date_plan');
+      if lTemp is not null then
+        if lFilter is not null then lFilter := lFilter || ' and '; end if;
+        lFilter := lFilter || lTemp;
+        lTemp := null;
+      end if;
+      
+      lTemp := rest_api_helper.PrepareSqlFilter('status_id', 'ost.orst_id');
+      if lTemp is not null then
+        if lFilter is not null then lFilter := lFilter || ' and '; end if;
+        lFilter := lFilter || lTemp;
+        lTemp := null;
+      end if;
+      
+      lTemp := rest_api_helper.PrepareSqlFilter('date_closed', 'o.complete_date');
+      if lTemp is not null then
+        if lFilter is not null then lFilter := lFilter || ' and '; end if;
+        lFilter := lFilter || lTemp;
+        lTemp := null;
+      end if;
+      
+      lTemp := rest_api_helper.PrepareSqlFilter('id', 'o.ord_id');
+      if lTemp is not null then
+        if lFilter is not null then lFilter := lFilter || ' and '; end if;
+        lFilter := lFilter || lTemp;
+        lTemp := null;
+      end if;
+      
+      lTemp := rest_api_helper.PrepareSqlFilter('shipment_date', 'shipment_date'); -- ???
+      if lTemp is not null then
+        if lFilter is not null then lFilter := lFilter || ' and '; end if;
+        lFilter := lFilter || lTemp;
+        lTemp := null;
+      end if;
     
     exception
       when others then
         lIsSuccess := false;
         lError     := Errors(5);
     end;
-  
-    -- order by
-    begin
     
-      lSortId          := apex_json.get_varchar2(p_path    => 'order.id',
-                                                 p_default => null);
-      lSortCreatedAt   := apex_json.get_varchar2(p_path    => 'order.created_at',
-                                                 p_default => null);
-      lSortDateFrom    := apex_json.get_varchar2(p_path    => 'order.date_from',
-                                                 p_default => null);
-      lSortDateTo      := apex_json.get_varchar2(p_path    => 'order.date_to',
-                                                 p_default => null);
-      lSortReceivables := apex_json.get_varchar2(p_path    => 'order.receivables',
-                                                 p_default => null);
+    -- Order by
+    begin
+      if rest_api_helper.PrepareSortFilter('id') is not null then
+        lSorts := rest_api_helper.PrepareSortFilter('id', 'o.ord_id');
+      end if;
+      
+      if rest_api_helper.PrepareSortFilter('created_at') is not null then
+        if lSorts is not null then lSorts := lSorts || ', '; end if;
+        lSorts := lSorts || rest_api_helper.PrepareSortFilter('created_at', 'cl.ord_date');
+      end if;
+      
+      if rest_api_helper.PrepareSortFilter('date_from') is not null then
+        if lSorts is not null then lSorts := lSorts || ', '; end if;
+        lSorts := lSorts || rest_api_helper.PrepareSortFilter('date_from', 'lp.source_date_plan');
+      end if;
+      
+      if rest_api_helper.PrepareSortFilter('date_to') is not null then
+        if lSorts is not null then lSorts := lSorts || ', '; end if;
+        lSorts := lSorts || rest_api_helper.PrepareSortFilter('date_to', 'dp.source_date_plan');
+      end if;
+      
+      if rest_api_helper.PrepareSortFilter('receivables') is not null then
+        if lSorts is not null then lSorts := lSorts || ', '; end if;
+        lSorts := lSorts || rest_api_helper.PrepareSortFilter('receivables');
+      end if;
     
     exception
       when others then
@@ -963,29 +909,15 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end;
   
     -- Проверяем, изменились ли фильтры
-    lFiltersPrevious := apex_util.get_preference(lCollectionName ||
-                                                 apex_application.g_instance,
-                                                 lCurrentUserName);
+    lFiltersPrevious := apex_util.get_preference(lCollectionName || apex_application.g_instance, lCurrentUserName);
                                                  
-    lFiltersState := 'lPeriodFrom=' ||
-                     to_char(lPeriodFrom, PkgDefaultDateFormat) || ';' ||
-                     'lPeriodTo=' ||
-                     to_char(lPeriodTo, PkgDefaultDateFormat) || ';' ||
-                     'lStatusId=' || to_char(lStatusId) || ';' ||
-                     'lSortId=' || to_char(lSortId) || ';' ||
-                     'lSortCreatedAt=' || to_char(lSortCreatedAt) || ';' ||
-                     'lSortDateFrom=' || to_char(lSortDateFrom) || ';' ||
-                     'lSortDateTo=' || to_char(lSortDateTo) || ';' ||
-                     'lSortReceivables=' || to_char(lSortReceivables) || ';';
+    lFiltersState := '' || lFilter || lSorts;
                      
     if lFiltersPrevious = lFiltersState then
       lShouldResetCollection := false;
     end if;
   
-    apex_util.set_preference(lCollectionName ||
-                             apex_application.g_instance,
-                             lFiltersState,
-                             lCurrentUserName);
+    apex_util.set_preference(lCollectionName || apex_application.g_instance, lFiltersState, lCurrentUserName);
   
     if lIsSuccess then
        -- Формирование коллекции
@@ -997,15 +929,10 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
        end if;
        APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
         for l_c in (select *
-                      from TABLE(mcsf_api.get_orders(pClntId          => lCompanyId,
-                                                     pDate_from       => lCreatedFrom, -- lPeriodFrom,
-                                                     pDate_to         => lCreatedTo, -- lPeriodTo,
-                                                     pStatus_id       => lStatusId,
-                                                     pSortId          => lSortId,
-                                                     pSortCreated_at  => lSortCreatedAt,
-                                                     pSortDate_from   => lSortDateFrom,
-                                                     pSortDate_to     => lSortDateTo,
-                                                     pSortReceivables => lSortReceivables))) loop
+                      from TABLE(mcsf_api.get_orders(pClntId => lCompanyId,
+                                                     pFilter => lFilter,
+                                                     pSortFilter => lSorts
+                                                     ))) loop
           APEX_COLLECTION.ADD_MEMBER(p_collection_name => lCollectionName,
                                      p_c001            => l_c.id,
                                      p_c002            => l_c.place_from,
@@ -1093,9 +1020,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('date_closed', l_c."date_closed",true);              
         apex_json.write('receivables', l_c."receivables", true);
         apex_json.write('amount', l_c."amount", true);
-        apex_json.write('notification_count',
-                        l_c."notification_count",
-                        true);
+        apex_json.write('notification_count', l_c."notification_count", true);
         apex_json.write('cargo_name', l_c."cargo_name", true);
         apex_json.write('contractor', l_c."contractor", true);
         apex_json.write('created_at', l_c."created_at", true);
@@ -3094,6 +3019,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     lColectionCount number := 0;
   
+    lVal varchar2(1000);
+  
   begin
     -- filters
     begin
@@ -3107,7 +3034,14 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         lIsSuccess := false;
         lError     := Errors(5);
     end;
+    
+    lVal := rest_api_helper.PrepareSqlFilter('created_at', 'test');
+    
+    /*if rest_api_helper.PrepareSortFilter('id') is not null then
+       lVal := rest_api_helper.PrepareSortFilter('id', 'o.ord_id');
+    end if;*/
   
+    htp.print(lVal);
   
     if lIsSuccess then
       apex_json.open_array('data');
@@ -3134,16 +3068,14 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     apex_json.write('offset', lOffset);
   
-    select count(t.id)
-      into lColectionCount
-      from TABLE(mcsf_api.Test) t;
+    select count(t.id) into lColectionCount from TABLE(mcsf_api.Test) t;
   
     apex_json.write('total', lColectionCount);
   
     apex_json.close_object();
   
     return lError;
-  end; 
+  end;
 
   -- ================================================
   /*

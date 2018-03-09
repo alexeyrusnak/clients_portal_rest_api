@@ -28,17 +28,11 @@ create or replace package MCSF_API is
   );
   type tbl_Orders is table of t_Order;
 
-  function Get_Orders(pClntId       client_requests.clnt_clnt_id%type,        -- ID Клиента
-                      pDate_from    client_requests.ord_date%type,            -- Дата начала
-                      pDate_to      client_requests.ord_date%type,            -- Дата окончания
-                      pStatus_id    order_statuses.orst_id%type default Null,  -- Идентификатор статуса 
-                      pSortId           Char default null,   -- Сортировка по ИД заказа 
-                      pSortCreated_at   Char default null,   -- Сортировка по дате создани заказа
-                      pSortDate_from    Char default null,   -- Сортировка по дате отправки заказа
-                      pSortDate_to      Char default null,   -- Сортировка по дате прибытия заказа
-                      pSortReceivables  Char default null    -- Сортировка по сумме задолженности
-                      )
-           return tbl_Orders pipelined parallel_enable;          
+ function Get_Orders(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
+                     pFilter varchar2 default null,
+                     pSortFilter varchar2 default null
+                     ) 
+   return tbl_Orders pipelined parallel_enable;          
 --*********************************************************************************************************************
 -- Получение информации по заказу (orders_get)
 --*********************************************************************************************************************
@@ -494,20 +488,13 @@ create or replace package body MCSF_API is
 --*********************************************************************************************************************
 -- Выдача списка заказов (orders)
 --*********************************************************************************************************************
- function Get_Orders(pClntId          client_requests.clnt_clnt_id%type, -- ID Клиента
-                     pDate_from       client_requests.ord_date%type, -- Дата начала
-                     pDate_to         client_requests.ord_date%type, -- Дата окончания
-                     pStatus_id       order_statuses.orst_id%type default Null, -- Идентификатор статуса 
-                     pSortId          Char default null, -- Сортировка по ИД заказа 
-                     pSortCreated_at  Char default null, -- Сортировка по дате создани заказа
-                     pSortDate_from   Char default null, -- Сортировка по дате отправки заказа
-                     pSortDate_to     Char default null, -- Сортировка по дате прибытия заказа
-                     pSortReceivables Char default null -- Сортировка по сумме задолженности                      
-                     ) return tbl_Orders
-   pipelined
-   parallel_enable is
+ function Get_Orders(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
+                     pFilter varchar2 default null,
+                     pSortFilter varchar2 default null
+                     ) 
+   return tbl_Orders pipelined parallel_enable is
  
-   lQuery varchar2(4000);
+   lQuery varchar2(6000);
  
    lCursor sys_refcursor;
    lRow    t_Order;
@@ -558,14 +545,14 @@ create or replace package body MCSF_API is
             conteiner_types ctp,
             order_statuses ost
       where cl.clnt_clnt_id   = :pClntId 
-        and cl.ord_date between :pDate_from and :pDate_to 
+        --and cl.ord_date between :pDate_from and :pDate_to 
         and co.clrq_clrq_id   = cl.clrq_id 
         and o.ord_id          = co.ord_ord_id
         and o.cont_cont_id    = con.cont_id(+)
         and con.cntp_cntp_id  = ctp.cntp_id(+)
         and o.ord_id          = vsl.ord_ord_id(+)
         and vsl.orst_orst_id  = ost.orst_id(+)
-        and (:pStatus_id is Null or vsl.orst_orst_id = :pStatus_id)
+        --and (:pStatus_id is Null or vsl.orst_orst_id = :pStatus_id)
         and o.ord_id          = vofr.ord_ord_id(+)
         and vofr.frgt_frgt_id = fr.frgt_id(+)
         -- Грузоотправитель
@@ -583,18 +570,20 @@ create or replace package body MCSF_API is
         and dp.del_date(+) is Null
         and dp.city_city_id   = cit_dp.city_id(+)
         and cit_dp.cou_cou_id = cou_dp.cou_id(+)';
+   
+   if pFilter is not null then
+     lQuery := lQuery || ' and ' || pFilter;
+   end if;
+   
+   if pSortFilter is not null then
+     lQuery := lQuery || ' order by ' || pSortFilter;
+   end if;  
  
-   open lCursor for lQuery
-     using pClntId, pDate_from, pDate_to, pStatus_id, pStatus_id;
+   open lCursor for lQuery using pClntId; --, pDate_from, pDate_to, pStatus_id, pStatus_id;
  
-   LOOP
-     FETCH lCursor
-       INTO lRow;
-     EXIT WHEN lCursor%NOTFOUND;
-     PIPE ROW(lRow);
-   END LOOP;
+   loop fetch lCursor into lRow; exit when lCursor%notfound; pipe row(lRow); end loop;
  
-   CLOSE lCursor;
+   close lCursor;
  
    /*for cur in (
       select o.ord_id id,                                                     -- Код заказа (id)

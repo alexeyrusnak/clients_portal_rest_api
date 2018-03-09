@@ -48,6 +48,14 @@ function make_filter_string(
 -- Error: Wrong Type
 -- Error: No Value
 -- Error: Wrong Type/Value combination
+
+function IsDate(pTestStrin varchar, pFormat out varchar) return boolean;
+
+function PrepareSortFilter(pFilterName varchar, pFileldName varchar default null) return varchar2;
+
+function PrepareSqlFilter(pFilterName varchar, pFileldName varchar default null) return varchar2;
+
+procedure AddFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2);
  
 end REST_API_HELPER;
 /
@@ -233,9 +241,9 @@ begin
   ) loop
     i := i + 1;
     begin
-      --d := to_date(c.elem, rest_api.PkgDefaultDateFormat);
-      d := to_date(c.elem, 'yyyy-mm-dd'); -- изменено на константный формат, как в ТЗ
-      vv_value := vv_value || ',' || 'to_date(''' || c.elem || ''', ''yyyy-mm-dd'')'; -- element IS date
+      d := to_date(c.elem, rest_api.PkgDefaultDateFormat);
+      --d := to_date(c.elem, 'yyyy-mm-dd'); -- изменено на константный формат, как в ТЗ
+      vv_value := vv_value || ',' || 'to_date(''' || c.elem || ''', '''||rest_api.PkgDefaultDateFormat||''')'; -- element IS date
     exception when others then
       begin
         vv_value := vv_value || ',' || to_char(to_number(c.elem)); -- element IS number
@@ -257,6 +265,204 @@ begin
   end if;
   return v_filter;
 end make_filter_string;
+
+function IsDate(pTestStrin varchar, pFormat out varchar) return boolean is
+  lDate date;
+  lRes boolean := false;
+begin
   
+  if lRes != true then
+    begin
+      select to_date(pTestStrin, rest_api.PkgDefaultDateShortFormat) into lDate from dual;
+      lRes := true;
+      pFormat := rest_api.PkgDefaultDateShortFormat;
+    exception
+      when others then
+        null;
+    end;
+  end if;
+  
+  if lRes then return lRes; end if;
+  
+  begin
+    select to_date(pTestStrin, rest_api.PkgDefaultDateFormat) into lDate from dual;
+    lRes := true; 
+    pFormat := rest_api.PkgDefaultDateFormat;
+  exception 
+    when others then null;
+  end;
+  
+  return lRes;
+  
+end;
+
+function PrepareSortFilter(pFilterName varchar, pFileldName varchar default null) return varchar2 is
+  lVal varchar2(10);
+  lRes varchar2(1000);
+begin
+  
+  lVal := apex_json.get_varchar2('order.' || pFilterName, null);
+  
+  if lVal != 'asc' and lVal != 'desc' then return null; end if;
+  
+  if lVal is not null then
+    if pFileldName is not null then
+      lRes := pFileldName || ' ' || lVal;
+    else
+      lRes := pFilterName || ' ' || lVal;
+    end if;
+  end if;
+  
+  return lRes;
+end;
+
+function PrepareSqlFilter(pFilterName varchar, pFileldName varchar default null) return varchar2 is
+  lValNode apex_json.t_value;
+  lVal varchar2(100);
+  lValType varchar2(20);
+  lValsArrCount number;
+  lType varchar2(10);
+  lTempNum number;
+  lDateFormat varchar2(100);
+  lRes varchar2(1000);
+begin
+  
+  -- Получаем ноду
+  lValNode := apex_json.get_value('filter.' || pFilterName || '.value');
+  
+  lType := apex_json.get_varchar2('filter.' || pFilterName || '.type', p_default => '=');
+  
+  begin
+    select 1 into lTempNum from dual where lType in ('=', '!=', '>', '<', '>=', '<=', 'like', 'between', 'in', 'not in');
+  exception when no_data_found then 
+    return null;
+  end;
+  
+  -- Проверяем тип
+  if lValNode.kind = 2 then
+           --lValType := 'boolean';
+           lVal := 'true';
+           lRes := lRes || lVal;
+
+       elsif lValNode.kind = 3 then
+           --lValType := 'boolean';
+           lVal := 'false';
+           lRes := lRes || lVal;
+
+       elsif lValNode.kind = 4 then
+           --lValType := 'number';
+           lVal := to_char( lValNode.number_value );
+           lRes := lRes || lVal;
+
+       elsif lValNode.kind = 5 then
+           lValType := 'varchar2';
+           lVal := lValNode.varchar2_value;
+           
+           -- Проверяем является ли тип датой
+           if IsDate(lVal, lDateFormat) then lValType := 'date'; end if;
+           
+           if lValType = 'date' then
+             lRes := lRes || 'to_date(''' || lVal || ''',' || '''' || lDateFormat || '''' || ')';
+           else
+             lRes := lRes || '''' || lVal || '''';
+           end if;
+           
+           if lType = 'between' or lType = 'in' then return null; end if;
+
+       elsif lValNode.kind = 7 then
+           lValType := 'array';
+           lVal := null;
+           
+           lValsArrCount := apex_json.get_count('filter.' || pFilterName || '.value');
+           
+           if lValsArrCount > 1 and lType = '=' then lType := 'in'; end if;
+           
+           if lValsArrCount > 1 and lType = '!=' then lType := 'not in'; end if;
+           
+           if lValsArrCount > 1 and lType != 'between' and lType != 'in' and lType != 'not in' then return null; end if;
+           
+           if lValsArrCount != 2 and lType = 'between' then return null; end if;
+           
+           for i in 1..lValsArrCount loop
+             lValNode := apex_json.get_value('filter.' || pFilterName || '.value[%d]',p0=> i);
+             
+             if i > 1 then
+               if lType = 'between' then
+                 lRes := lRes || ' and ';
+               else
+                 lRes := lRes || ', ';
+               end if;
+             end if;
+             
+             if lValNode.kind = 2 then
+                 lValType := 'array of boolean';
+                 lVal := 'true';
+                 lRes := lRes || lVal;
+             
+             elsif lValNode.kind = 3 then
+                 lValType := 'array of boolean';
+                 lVal := 'false';
+                 lRes := lRes || lVal;
+
+             elsif lValNode.kind = 4 then
+                 lValType := 'array of number';
+                 lVal := to_char( lValNode.number_value );
+                 lRes := lRes || lVal;
+
+             elsif lValNode.kind = 5 then
+                 lValType := 'array of varchar2';
+                 lVal := lValNode.varchar2_value;
+                 
+                 -- Проверяем является ли тип датой
+                 if IsDate(lVal, lDateFormat) then lValType := 'array of date'; end if;
+                 
+                 if lValType = 'array of date' then
+                   lRes := lRes || 'to_date(''' || lVal || ''',' || '''' || lDateFormat || '''' || ')';
+                 else
+                   lRes := lRes || '''' || lVal || '''';
+                 end if;
+             
+             end if;
+             
+           end loop;
+           
+           if lType = 'in' or lType = 'not in' then
+             lRes := '(' || lRes || ')';
+           end if;
+           
+    end if;
+    
+    if lRes is null then return lRes; end if;
+    
+    if pFileldName is not null then
+      lRes := pFileldName || ' ' || lType || ' ' || lRes;
+    else
+      lRes := pFilterName || ' ' || lType || ' ' || lRes;
+    end if;
+  
+  return lRes;
+
+end PrepareSqlFilter;
+
+procedure AddFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2) is
+  lDate date;
+  lRes boolean := false;
+  lTemp varchar2(250);
+begin
+  
+  lTemp := rest_api_helper.PrepareSqlFilter(pFilterName, pFileldName);
+  
+  if lTemp is not null then
+    
+     if pFilters is not null then pFilters := pFilters || ' and '; end if;
+     
+     pFilters := pFilters || lTemp;
+     lTemp := null;
+     
+  end if;
+  
+  return;
+end;
+
 end REST_API_HELPER;
 /
