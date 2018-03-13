@@ -24,7 +24,9 @@ create or replace package MCSF_API is
    date_to             t_loading_places.source_date_plan%type,-- Дата прибытия заказа
    te_info             varchar2(500),                        -- Номер и тип ТЕ
    port_svh            ports.def%type,                       -- Порт СВХ
-   departure_country       countries.def%type                    -- Страна происхождения груза
+   departure_country       countries.def%type,               -- Страна происхождения груза
+   shipment_date       konosaments.pol_date%type,             -- Дата погрузки судна
+   unload_transhipment_plan_date       konosaments.pol_date%type             -- Дата подхода в порт перевалки
   );
   type tbl_Orders is table of t_Order;
 
@@ -497,97 +499,140 @@ create or replace package body MCSF_API is
    return tbl_Orders pipelined parallel_enable is
  
    lQuery varchar2(32000);
+   lQueryCols varchar2(32000);
+   lQueryFrom varchar2(32000);
+   lQueryWhere varchar2(32000);
  
    lCursor sys_refcursor;
    lRow    t_Order;
+   
+   type tColsArr is table of varchar2(1200) index by varchar2(60);
+   
+   lColsArr tColsArr;
  
  begin
  
-   lQuery := 'select o.ord_id id,                                                     -- Код заказа (id)
-             lp.address_source||'' ''||cit_lp.def||'' ''||cou_lp.def place_from,  -- Адрес отправки
-             dp.address_source||'' ''||cit_dp.def||'' ''||cou_dp.def place_to,    -- Адрес назначения     
-             ost.def status,                                                  -- Оперативный статус
-             ost.orst_id status_id,                                           -- Идентификатор статуса
-             o.complete_date  date_closed,                                    -- Дата завершения заказа
-             mcsf_api.GetOrder_receivables(o.ord_id,0) receivables,                    -- Сумма задолженности по заказу
-             mcsf_api.GetOrder_receivables(o.ord_id,1) amount,                         -- Оплаченная сумма
-    
-             (select count(*) 
-                from MESSAGES2CUSTOMERS t
-               where t.ord_ord_id = o.ord_id and
-                     t.send_date is not null and
-                     t.message_text not in (''NOT'',''message_text'')
-             ) notification_count,            -- Кол-во уведомлений 
-             fr.def cargo_name,               -- Наименование груза
-             cl_otpr_o.client_name contractor,-- Наименование грузоотправителя
-             cl.ord_date created_at,          -- Дата создания заказа
-             lp.source_date_plan date_from,   -- Дата отправки заказа
-             dp.source_date_plan date_to,     -- Дата прибытия заказа
-             case when con.cont_number is Null then 
-                     null -- Номер контейнера еще не присвоен
-                  else 
-                     con.cont_number||'' (''||ctp.def||'')'' 
-             end te_info,                                             -- Номер и тип ТЕ
-             mcsf_api.GetPOD_ord(o.ord_id) port_svh,                  -- Порт СВХ
-             cou_lp.def departure_country                                 -- Страна отправления груза            
-       from t_orders o, 
-            clrq_orders co, 
-            client_requests cl,
-            t_loading_places lp,
-            t_loading_places dp,
-            vOrd_Frgt vofr,
-            freights fr,
-            conteiners con,
-            vOrder_Statuses_Last vsl,
-            cities cit_dp,
-            cities cit_lp,
-            countries cou_dp,
-            countries cou_lp,
-            clients cl_otpr_o,
-            conteiner_types ctp,
-            order_statuses ost
-      where cl.clnt_clnt_id   = :pClntId 
-        --and cl.ord_date between :pDate_from and :pDate_to 
-        and co.clrq_clrq_id   = cl.clrq_id 
-        and o.ord_id          = co.ord_ord_id
-        and o.cont_cont_id    = con.cont_id(+)
-        and con.cntp_cntp_id  = ctp.cntp_id(+)
-        and o.ord_id          = vsl.ord_ord_id(+)
-        and vsl.orst_orst_id  = ost.orst_id(+)
-        --and (:pStatus_id is Null or vsl.orst_orst_id = :pStatus_id)
-        and o.ord_id          = vofr.ord_ord_id(+)
-        and vofr.frgt_frgt_id = fr.frgt_id(+)
-        -- Грузоотправитель
-        and o.ord_id          = lp.ord_ord_id(+)
-        and lp.source_type(+) = 0
-        and lp.ldpl_type(+)   = 0
-        and lp.del_date(+) is Null
-        and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
-        and lp.city_city_id   = cit_lp.city_id(+)
-        and cit_lp.cou_cou_id = cou_lp.cou_id(+)
-        -- Грузополучатель
-        and o.ord_id          = dp.ord_ord_id(+)
-        and dp.source_type(+) = 0
-        and dp.ldpl_type(+)   = 1
-        and dp.del_date(+) is Null
-        and dp.city_city_id   = cit_dp.city_id(+)
-        and cit_dp.cou_cou_id = cou_dp.cou_id(+)';
+   lColsArr('id') := 'o.ord_id'; -- Код заказа (id)
+   lColsArr('place_from') := 'lp.address_source || '' '' || cit_lp.def || '' '' || cou_lp.def'; -- Адрес отправки
+   lColsArr('place_to') := 'dp.address_source || '' ''|| cit_dp.def || '' '' || cou_dp.def'; -- Адрес назначения
+   lColsArr('status') := 'ost.def'; -- Оперативный статус
+   lColsArr('status_id') := 'ost.orst_id'; -- Идентификатор статуса
+   lColsArr('date_closed') := 'o.complete_date'; -- Дата завершения заказа
+   lColsArr('receivables') := 'mcsf_api.GetOrder_receivables(o.ord_id,0)'; -- Сумма задолженности по заказу
+   lColsArr('amount') := 'mcsf_api.GetOrder_receivables(o.ord_id,1)'; -- Оплаченная сумма
+   lColsArr('notification_count') := '(select count(*) 
+                                          from MESSAGES2CUSTOMERS t
+                                         where t.ord_ord_id = o.ord_id and
+                                               t.send_date is not null and
+                                               t.message_text not in (''NOT'',''message_text'')
+                                       )'; -- Кол-во уведомлений
+   lColsArr('cargo_name') := 'fr.def'; -- Наименование груза
+   lColsArr('contractor') := 'cl_otpr_o.client_name'; -- Наименование грузоотправителя
+   lColsArr('created_at') := 'cl.ord_date'; -- Дата создания заказа
+   lColsArr('date_from') := 'lp.source_date_plan'; -- Дата отправки заказа
+   lColsArr('date_to') := 'dp.source_date_plan'; -- Дата прибытия заказа
+   lColsArr('te_info') := '(case when con.cont_number is Null then null else con.cont_number||'' (''||ctp.def||'')''end )'; -- Номер и тип ТЕ
+   lColsArr('port_svh') := 'mcsf_api.GetPOD_ord(o.ord_id)'; -- Порт СВХ
+   lColsArr('departure_country') := 'cou_lp.def'; -- Страна отправления груза
+   lColsArr('shipment_date') := '(select distinct first_value(k.pol_date) over (order by k.knsm_date asc) 
+                                   from konosaments k, knsm_orders ko, knor_ord ord
+                                  where ord.ord_ord_id = o.ord_id and
+                                        ko.knor_id = ord.knor_knor_id and
+                                        k.knsm_id = ko.knsm_knsm_id)'; -- Дата погрузки судна
+   lColsArr('unload_transhipment_plan_date') := '(select distinct first_value(k.pot_date) over (order by k.knsm_date asc) 
+                                                   from konosaments k, knsm_orders ko, knor_ord ord
+                                                  where ord.ord_ord_id = o.ord_id and
+                                                        ko.knor_id = ord.knor_knor_id and
+                                                        k.knsm_id = ko.knsm_knsm_id)'; -- Дата подхода в порт перевалки
+                                        
+   lQueryCols := lColsArr('id') || ' id, ' ||
+                 lColsArr('place_from') || ' place_from, ' ||
+                 lColsArr('place_to') || ' place_to, ' ||
+                 lColsArr('status') || ' status, ' ||
+                 lColsArr('status_id') || ' status_id, ' ||
+                 lColsArr('date_closed') || ' date_closed, ' ||
+                 lColsArr('receivables') || ' receivables, ' ||
+                 lColsArr('amount') || ' amount, ' ||
+                 lColsArr('notification_count') || ' notification_count, ' ||
+                 lColsArr('cargo_name') || ' cargo_name, ' ||
+                 lColsArr('contractor') || ' contractor, ' ||
+                 lColsArr('created_at') || ' created_at, ' ||
+                 lColsArr('date_from') || ' date_from, ' ||
+                 lColsArr('date_to') || ' date_to, ' ||
+                 lColsArr('te_info') || ' te_info, ' ||
+                 lColsArr('port_svh') || ' port_svh, ' ||
+                 lColsArr('departure_country') || ' departure_country, ' ||
+                 lColsArr('shipment_date') || ' shipment_date, ' ||
+                 lColsArr('unload_transhipment_plan_date') || ' unload_transhipment_plan_date';
    
-   if pFilter is not null then
-     lQuery := lQuery || ' and ' || pFilter;
-   end if;
+   lQueryFrom := 't_orders o, 
+                  clrq_orders co, 
+                  client_requests cl,
+                  t_loading_places lp,
+                  t_loading_places dp,
+                  vOrd_Frgt vofr,
+                  freights fr,
+                  conteiners con,
+                  vOrder_Statuses_Last vsl,
+                  cities cit_dp,
+                  cities cit_lp,
+                  countries cou_dp,
+                  countries cou_lp,
+                  clients cl_otpr_o,
+                  conteiner_types ctp,
+                  order_statuses ost';
+                  
+   lQueryWhere := 'cl.clnt_clnt_id   = :pClntId 
+                  and co.clrq_clrq_id   = cl.clrq_id 
+                  and o.ord_id          = co.ord_ord_id
+                  and o.cont_cont_id    = con.cont_id(+)
+                  and con.cntp_cntp_id  = ctp.cntp_id(+)
+                  and o.ord_id          = vsl.ord_ord_id(+)
+                  and vsl.orst_orst_id  = ost.orst_id(+)
+                  and o.ord_id          = vofr.ord_ord_id(+)
+                  and vofr.frgt_frgt_id = fr.frgt_id(+)
+                  -- Грузоотправитель
+                  and o.ord_id          = lp.ord_ord_id(+)
+                  and lp.source_type(+) = 0
+                  and lp.ldpl_type(+)   = 0
+                  and lp.del_date(+) is Null
+                  and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
+                  and lp.city_city_id   = cit_lp.city_id(+)
+                  and cit_lp.cou_cou_id = cou_lp.cou_id(+)
+                  -- Грузополучатель
+                  and o.ord_id          = dp.ord_ord_id(+)
+                  and dp.source_type(+) = 0
+                  and dp.ldpl_type(+)   = 1
+                  and dp.del_date(+) is Null
+                  and dp.city_city_id   = cit_dp.city_id(+)
+                  and cit_dp.cou_cou_id = cou_dp.cou_id(+)';
+   
+   lQuery := 'select ' || lQueryCols || ' from ' || lQueryFrom || ' where ' || lQueryWhere;
    
    if pQueryFilter is not null then
-     lQuery := lQuery || ' and lower((
-                case when con.cont_number is Null then 
-                     null -- Номер контейнера еще не присвоен
-                else 
-                     con.cont_number||'' (''||ctp.def||'')'' 
-                end ) 
-               || '' '' || fr.def 
-               || '' '' || cl_otpr_o.client_name 
-               || '' '' || cou_lp.def
+     lQuery := lQuery || ' and lower(' ||
+               lColsArr('id') || ' || '' '' || ' ||
+               lColsArr('place_from') || ' || '' '' || ' ||
+               lColsArr('place_to') || ' || '' '' || ' ||
+               lColsArr('status') || ' || '' '' || ' ||
+               lColsArr('status_id') || ' || '' '' || ' ||
+               lColsArr('date_closed') || ' || '' '' || ' ||
+               lColsArr('receivables') || ' || '' '' || ' ||
+               lColsArr('amount') || ' || '' '' || ' ||
+               lColsArr('notification_count') || ' || '' '' || ' ||
+               lColsArr('cargo_name') || ' || '' '' || ' ||
+               lColsArr('contractor') || ' || '' '' || ' ||
+               lColsArr('created_at') || ' || '' '' || ' ||
+               lColsArr('date_from') || ' || '' '' || ' ||
+               lColsArr('date_to') || ' || '' '' || ' ||
+               lColsArr('te_info') || ' || '' '' || ' ||
+               lColsArr('port_svh') || ' || '' '' || ' ||
+               lColsArr('departure_country') || '
              ) like lower(''%' || pQueryFilter || '%'')';
+   end if;
+   
+   if pFilter is not null then
+     lQuery := 'select * from (' || lQuery || ') where ' || pFilter;
    end if;
    
    if pSortFilter is not null then

@@ -828,27 +828,27 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       lOffset := apex_json.get_number('offset', PkgDefaultOffset);
       lLimit  := apex_json.get_number('limit', PkgDefaultLimit);
                                       
-      rest_api_helper.AddFilter('id', 'o.ord_id', lFilter); -- Идентификатор заказа
+      rest_api_helper.AddFilter('id', null, lFilter); -- Идентификатор заказа
       
-      rest_api_helper.AddFilter('created_at', 'cl.ord_date', lFilter); -- Дата создания заказа
+      rest_api_helper.AddFilter('created_at', null, lFilter); -- Дата создания заказа
       
-      rest_api_helper.AddFilter('date_from', 'lp.source_date_plan', lFilter); -- Дата отправки заказа
+      rest_api_helper.AddFilter('date_from', null, lFilter); -- Дата отправки заказа
       
-      rest_api_helper.AddFilter('date_to', 'dp.source_date_plan', lFilter); -- Дата прибытия заказа
+      rest_api_helper.AddFilter('date_to', null, lFilter); -- Дата прибытия заказа
       
-      rest_api_helper.AddFilter('status', 'ost.def', lFilter); -- Cтатус
+      rest_api_helper.AddFilter('status', null, lFilter); -- Cтатус
       
-      rest_api_helper.AddFilter('status_id', 'ost.orst_id', lFilter); -- Идентификатор статуса
+      rest_api_helper.AddFilter('status_id', null, lFilter); -- Идентификатор статуса
       
-      rest_api_helper.AddFilter('date_closed', 'o.complete_date', lFilter); -- Дата закрытия заказа
+      rest_api_helper.AddFilter('date_closed', null, lFilter); -- Дата закрытия заказа
       
-      --rest_api_helper.AddFilter('shipment_date', 'shipment_date', lFilter); -- Дата погрузки ?
+      rest_api_helper.AddFilter('shipment_date', null, lFilter); -- Дата погрузки
       
-      rest_api_helper.AddFilter('te_number', 'con.cont_number||'' (''||ctp.def||'')''', lFilter); -- Номер ТЕ (с индексом)
+      rest_api_helper.AddFilter('te_number', null, lFilter); -- Номер ТЕ (с индексом)
       
-      rest_api_helper.AddFilter('te_info', 'con.cont_number||'' (''||ctp.def||'')''', lFilter); -- Номер ТЕ (с индексом)
+      rest_api_helper.AddFilter('te_info', null, lFilter); -- Номер ТЕ (с индексом)
       
-      --rest_api_helper.AddFilter('unload_transhipment_plan_date', 'unload_transhipment_plan_date', lFilter); -- Дата подхода в порт перевалки ?
+      rest_api_helper.AddFilter('unload_transhipment_plan_date', null, lFilter); -- Дата подхода в порт перевалки ?
       
       --rest_api_helper.AddFilter('unload_destination_plan_date', 'unload_destination_plan_date', lFilter); -- Дата подхода в порт/СВХ назначения ?
       
@@ -868,17 +868,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       --rest_api_helper.AddFilter('am_number', 'am_number', lFilter); -- Номер АМ ?
       
-      rest_api_helper.AddFilter('fio_driver', 'fio_driver', lFilter); -- ФИО водителя ?
+      rest_api_helper.AddFilter('fio_driver', null, lFilter); -- ФИО водителя ?
       
-      rest_api_helper.AddFilter('cargo_name', 'fr.def', lFilter); -- Наименование груза
+      rest_api_helper.AddFilter('cargo_name', null, lFilter); -- Наименование груза
       
-      rest_api_helper.AddFilter('departure_country', 'cou_lp.def', lFilter); -- Страна отправления груза
+      rest_api_helper.AddFilter('departure_country', null, lFilter); -- Страна отправления груза
       
-      rest_api_helper.AddFilter('port_svh', 'mcsf_api.GetPOD_ord(o.ord_id)', lFilter); -- Порт/СВХ
+      rest_api_helper.AddFilter('port_svh', null, lFilter); -- Порт/СВХ
       
-      rest_api_helper.AddFilter('place_from', 'lp.address_source||'' ''||cit_lp.def||'' ''||cou_lp.def', lFilter); -- Адрес отправки 
+      rest_api_helper.AddFilter('place_from', null, lFilter); -- Адрес отправки 
       
-      rest_api_helper.AddFilter('place_to', 'dp.address_source||'' ''||cit_dp.def||'' ''||cou_dp.def place_to', lFilter); -- Адрес назначения      
+      rest_api_helper.AddFilter('place_to', null, lFilter); -- Адрес назначения      
       
       lQueryFilter := replace(apex_json.get_varchar2('data.query', null), '''', '"');
     
@@ -891,15 +891,15 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     -- Order by
     begin
       
-      rest_api_helper.AddSortFilter('id', 'o.ord_id', lSorts);
+      rest_api_helper.AddSortFilter('id', null, lSorts);
       
-      rest_api_helper.AddSortFilter('created_at', 'cl.ord_date', lSorts);
+      rest_api_helper.AddSortFilter('created_at', null, lSorts);
       
-      rest_api_helper.AddSortFilter('date_from', 'lp.source_date_plan', lSorts);
+      rest_api_helper.AddSortFilter('date_from', null, lSorts);
       
-      rest_api_helper.AddSortFilter('date_to', 'dp.source_date_plan', lSorts);
+      rest_api_helper.AddSortFilter('date_to', null, lSorts);
       
-      rest_api_helper.AddSortFilter('receivables', 'receivables', lSorts);
+      rest_api_helper.AddSortFilter('receivables', null, lSorts);
     
     exception
       when others then
@@ -950,7 +950,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c014            => lRc.te_info,
                                      p_c015            => lRc.port_svh,
                                      p_c016            => lRc.departure_country,
-                                     p_c017            => lRc.date_closed);
+                                     p_c017            => to_char(lRc.date_closed,PkgDefaultDateFormat),
+                                     p_c018            => to_char(lRc.shipment_date,PkgDefaultDateFormat),
+                                     p_c019            => to_char(lRc.unload_transhipment_plan_date,PkgDefaultDateFormat));
         end loop;
       
       end if;
@@ -976,7 +978,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c014 "te_info",
                          c.c015 "port_svh",
                          c.c016 "departure_country",
-                         c.c017 "date_closed"
+                         c.c017 "date_closed",
+                         c.c018 "shipment_date",
+                         c.c019 "unload_transhipment_plan_date"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1003,6 +1007,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('te_info', lRc."te_info", true);
         apex_json.write('port_svh', lRc."port_svh", true);
         apex_json.write('departure_country', lRc."departure_country", true);
+        apex_json.write('shipment_date', lRc."shipment_date", true);
+        apex_json.write('unload_transhipment_plan_date', lRc."unload_transhipment_plan_date", true);
       
         apex_json.close_object;
       
