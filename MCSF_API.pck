@@ -3,6 +3,8 @@ create or replace package MCSF_API is
   -- Author  : A. STARSHININ
   -- Created : 04.12.2016 20:56:58
   -- Purpose : Пакет хранимых процедур для построения интернет-портала МКСФ
+  
+  PkgDefaultDateFormat varchar2(255) := 'YYYY-MM-DD HH24:MI:SS'; -- Формат даты при конвертациях в строку и обратно
 
 --*********************************************************************************************************************
 -- Выдача списка заказов (orders)
@@ -674,18 +676,30 @@ create or replace package body MCSF_API is
                lColsArr('place_to') || ' || '' '' || ' ||
                lColsArr('status') || ' || '' '' || ' ||
                lColsArr('status_id') || ' || '' '' || ' ||
-               lColsArr('date_closed') || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_closed') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                lColsArr('receivables') || ' || '' '' || ' ||
                lColsArr('amount') || ' || '' '' || ' ||
                lColsArr('notification_count') || ' || '' '' || ' ||
                lColsArr('cargo_name') || ' || '' '' || ' ||
                lColsArr('contractor') || ' || '' '' || ' ||
-               lColsArr('created_at') || ' || '' '' || ' ||
-               lColsArr('date_from') || ' || '' '' || ' ||
-               lColsArr('date_to') || ' || '' '' || ' ||
+               'to_char(' || lColsArr('created_at') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_from') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_to') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                lColsArr('te_info') || ' || '' '' || ' ||
                lColsArr('port_svh') || ' || '' '' || ' ||
-               lColsArr('departure_country') || '
+               lColsArr('departure_country') || ' || '' '' || ' ||
+               'to_char(' || lColsArr('shipment_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('unload_transhipment_plan_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('unload_destination_plan_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('unload_destination_fact_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_dt') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_release_dt') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               lColsArr('dt_number') || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_export_port') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_return_empty') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('date_unloading_warehouse') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               lColsArr('am_number') || ' || '' '' || ' ||
+               lColsArr('fio_driver') || '
              ) like lower(''%' || pQueryFilter || '%'')';
    end if;
    
