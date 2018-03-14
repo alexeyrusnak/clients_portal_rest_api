@@ -26,7 +26,17 @@ create or replace package MCSF_API is
    port_svh            ports.def%type,                       -- Порт СВХ
    departure_country       countries.def%type,               -- Страна происхождения груза
    shipment_date       konosaments.pol_date%type,             -- Дата погрузки судна
-   unload_transhipment_plan_date       konosaments.pol_date%type             -- Дата подхода в порт перевалки
+   unload_transhipment_plan_date       konosaments.pol_date%type,             -- Дата подхода в порт перевалки
+   unload_destination_plan_date       order_cnsm_mv.arrival_date%type,             -- Дата подхода в порт/СВХ назначения
+   unload_destination_fact_date       vVouchers.voch_date%type,             -- Дата выгрузки в порту/СВХ назначения (факт)
+   date_dt                            gtds.gtd_date%type, -- Дата подачи ДТ
+   date_release_dt                    gtds.date_out%type,  -- Дата выпуска ДТ
+   dt_number                          gtds.gtd_number%type, -- Номер ДТ
+   date_export_port                          order_ways.date_out%type, -- Дата вывоза из порта
+   date_return_empty                         order_ways.date_plan%type, -- Дата возврата порожнего
+   date_unloading_warehouse                  order_ways.date_plan%type, -- Дата выгрузки на склад
+   am_number                                 cars.state_number%type, -- Номер АМ
+   fio_driver                                cmrs.driver_name%type -- ФИО водителя
   );
   type tbl_Orders is table of t_Order;
 
@@ -544,6 +554,18 @@ create or replace package body MCSF_API is
                                                   where ord.ord_ord_id = o.ord_id and
                                                         ko.knor_id = ord.knor_knor_id and
                                                         k.knsm_id = ko.knsm_knsm_id)'; -- Дата подхода в порт перевалки
+   lColsArr('unload_destination_plan_date') := 'oc.arrival_date'; -- Дата подхода в порт/СВХ назначения - это eta или arrival дата?
+   lColsArr('unload_destination_fact_date') := 'nvl(vd.voch_date, ow1.voch_date)'; -- Дата выгрузки в порту/СВХ назначения (факт)
+   lColsArr('date_dt') := 'g.gtd_date'; -- ГТД номер
+   lColsArr('date_release_dt') := 'g.date_out'; -- Дата ГТД
+   lColsArr('dt_number') := 'g.gtd_number'; -- Дата выпуска ГТД
+   
+   lColsArr('date_export_port') := 'ow3.date_out'; -- Дата вывоза из порта
+   lColsArr('date_return_empty') := 'ow3.date_plan'; -- Дата возврата порожнего
+   lColsArr('date_unloading_warehouse') := 'null'; -- Дата возврата порожнего
+   
+   lColsArr('am_number') := 'car.state_number'; -- Номер АМ
+   lColsArr('fio_driver') := 'c.driver_name'; -- ФИО водителя
                                         
    lQueryCols := lColsArr('id') || ' id, ' ||
                  lColsArr('place_from') || ' place_from, ' ||
@@ -563,7 +585,17 @@ create or replace package body MCSF_API is
                  lColsArr('port_svh') || ' port_svh, ' ||
                  lColsArr('departure_country') || ' departure_country, ' ||
                  lColsArr('shipment_date') || ' shipment_date, ' ||
-                 lColsArr('unload_transhipment_plan_date') || ' unload_transhipment_plan_date';
+                 lColsArr('unload_transhipment_plan_date') || ' unload_transhipment_plan_date, ' ||
+                 lColsArr('unload_destination_plan_date') || ' unload_destination_plan_date, ' ||
+                 lColsArr('unload_destination_fact_date') || ' unload_destination_fact_date, ' ||
+                 lColsArr('date_dt') || ' date_dt, ' ||
+                 lColsArr('date_release_dt') || ' date_release_dt, ' ||
+                 lColsArr('dt_number') || ' dt_number, ' ||
+                 lColsArr('date_export_port') || ' date_export_port, ' ||
+                 lColsArr('date_return_empty') || ' date_return_empty, ' ||
+                 lColsArr('date_unloading_warehouse') || ' date_unloading_warehouse, ' ||
+                 lColsArr('am_number') || ' am_number, ' ||
+                 lColsArr('fio_driver') || ' fio_driver ';
    
    lQueryFrom := 't_orders o, 
                   clrq_orders co, 
@@ -580,7 +612,17 @@ create or replace package body MCSF_API is
                   countries cou_lp,
                   clients cl_otpr_o,
                   conteiner_types ctp,
-                  order_statuses ost';
+                  order_statuses ost,
+                  order_cnsm_mv oc,  -- данные по стране прибытия
+                  vVouchers vd,
+                  order_ways ow1,
+                  order_ways ow3,
+                  vord_gtd vgt,
+                  gtds g,
+                  cmrs c,
+                  cars car,
+                  vcmrs_last cmrl
+                  ';
                   
    lQueryWhere := 'cl.clnt_clnt_id   = :pClntId 
                   and co.clrq_clrq_id   = cl.clrq_id 
@@ -605,7 +647,23 @@ create or replace package body MCSF_API is
                   and dp.ldpl_type(+)   = 1
                   and dp.del_date(+) is Null
                   and dp.city_city_id   = cit_dp.city_id(+)
-                  and cit_dp.cou_cou_id = cou_dp.cou_id(+)';
+                  and cit_dp.cou_cou_id = cou_dp.cou_id(+)
+                  and o.ord_id          = oc.ord_id(+)
+                  and o.ord_id          = ow1.ord_ord_id(+)
+                  -- ДУ
+                  and o.ord_id          = vd.ord_ord_id(+)
+                  -- ГТД
+                  and o.ord_id          = vgt.ord_ord_id(+)
+                  and vgt.gtd_gtd_id    = g.gtd_id(+)
+                  -- Вывоз
+                  and o.ord_id          = ow3.ord_ord_id(+)
+                  and ow3.orws_type(+)  = 3
+                  and ow3.del_user(+) is Null
+                  -- Машина и водитель
+                  and ow3.orws_id         = cmrl.orws_orws_id(+)
+                  and cmrl.cmr_id         = c.cmr_id(+)
+                  and c.car_car_id        = car.car_id(+)
+                  ';
    
    lQuery := 'select ' || lQueryCols || ' from ' || lQueryFrom || ' where ' || lQueryWhere;
    

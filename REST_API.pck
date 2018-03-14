@@ -848,25 +848,25 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('te_info', null, lFilter); -- Номер ТЕ (с индексом)
       
-      rest_api_helper.AddFilter('unload_transhipment_plan_date', null, lFilter); -- Дата подхода в порт перевалки ?
+      rest_api_helper.AddFilter('unload_transhipment_plan_date', null, lFilter); -- Дата подхода в порт перевалки
       
-      --rest_api_helper.AddFilter('unload_destination_plan_date', 'unload_destination_plan_date', lFilter); -- Дата подхода в порт/СВХ назначения ?
+      rest_api_helper.AddFilter('unload_destination_plan_date', 'unload_destination_plan_date', lFilter); -- Дата подхода в порт/СВХ назначения
       
-      --rest_api_helper.AddFilter('unload_destination_fact_date', 'unload_destination_fact_date', lFilter); -- Дата выгрузки в порту/СВХ назначения (факт) ?
+      rest_api_helper.AddFilter('unload_destination_fact_date', 'unload_destination_fact_date', lFilter); -- Дата выгрузки в порту/СВХ назначения (факт)
       
-      --rest_api_helper.AddFilter('date_dt', 'date_dt', lFilter); -- Дата подачи ДТ ?
+      rest_api_helper.AddFilter('date_dt', 'date_dt', lFilter); -- Дата подачи ДТ
       
-      --rest_api_helper.AddFilter('date_release_dt', 'date_release_dt', lFilter); -- Дата выпуска ДТ ?
+      rest_api_helper.AddFilter('date_release_dt', 'date_release_dt', lFilter); -- Дата выпуска ДТ
       
-      --rest_api_helper.AddFilter('date_export_port', 'date_export_port', lFilter); -- Дата вывоза из порта ?
+      rest_api_helper.AddFilter('date_export_port', 'date_export_port', lFilter); -- Дата вывоза из порта
       
-      --rest_api_helper.AddFilter('date_return_empty', 'date_return_empty', lFilter); -- Дата возврата порожнего ?
+      rest_api_helper.AddFilter('date_return_empty', 'date_return_empty', lFilter); -- Дата возврата порожнего
       
-      --rest_api_helper.AddFilter('date_unloading_warehouse', 'date_unloading_warehouse', lFilter); -- Дата выгрузки на склад ?
+      rest_api_helper.AddFilter('date_unloading_warehouse', 'date_unloading_warehouse', lFilter); -- Дата выгрузки на склад
       
-      --rest_api_helper.AddFilter('dt_number', 'dt_number', lFilter); -- Номер ДТ ?
+      rest_api_helper.AddFilter('dt_number', 'dt_number', lFilter); -- Номер ДТ
       
-      --rest_api_helper.AddFilter('am_number', 'am_number', lFilter); -- Номер АМ ?
+      rest_api_helper.AddFilter('am_number', 'am_number', lFilter); -- Номер АМ ?
       
       rest_api_helper.AddFilter('fio_driver', null, lFilter); -- ФИО водителя ?
       
@@ -952,7 +952,18 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c016            => lRc.departure_country,
                                      p_c017            => to_char(lRc.date_closed,PkgDefaultDateFormat),
                                      p_c018            => to_char(lRc.shipment_date,PkgDefaultDateFormat),
-                                     p_c019            => to_char(lRc.unload_transhipment_plan_date,PkgDefaultDateFormat));
+                                     p_c019            => to_char(lRc.unload_transhipment_plan_date,PkgDefaultDateFormat),
+                                     p_c020            => to_char(lRc.unload_destination_plan_date,PkgDefaultDateFormat),
+                                     p_c021            => to_char(lRc.unload_destination_fact_date,PkgDefaultDateFormat),
+                                     p_c022            => to_char(lRc.date_dt,PkgDefaultDateFormat),
+                                     p_c023            => to_char(lRc.date_release_dt,PkgDefaultDateFormat),
+                                     p_c024            => lRc.dt_number,
+                                     p_c025            => to_char(lRc.date_export_port,PkgDefaultDateFormat),
+                                     p_c026            => to_char(lRc.date_return_empty,PkgDefaultDateFormat),
+                                     p_c027            => to_char(lRc.date_unloading_warehouse,PkgDefaultDateFormat),
+                                     p_c028            => lRc.am_number,
+                                     p_c029            => lRc.fio_driver
+                                     );
         end loop;
       
       end if;
@@ -980,7 +991,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c016 "departure_country",
                          c.c017 "date_closed",
                          c.c018 "shipment_date",
-                         c.c019 "unload_transhipment_plan_date"
+                         c.c019 "unload_transhipment_plan_date",
+                         c.c020 "unload_destination_plan_date",
+                         c.c021 "unload_destination_fact_date",
+                         c.c022 "date_dt",
+                         c.c023 "date_release_dt",
+                         c.c024 "dt_number",
+                         c.c025 "date_export_port",
+                         c.c026 "date_return_empty",
+                         c.c027 "date_unloading_warehouse",
+                         c.c028 "am_number",
+                         c.c029 "fio_driver"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1009,6 +1030,16 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('departure_country', lRc."departure_country", true);
         apex_json.write('shipment_date', lRc."shipment_date", true);
         apex_json.write('unload_transhipment_plan_date', lRc."unload_transhipment_plan_date", true);
+        apex_json.write('unload_destination_plan_date', lRc."unload_destination_plan_date", true);
+        apex_json.write('unload_destination_fact_date', lRc."unload_destination_fact_date", true);
+        apex_json.write('date_dt', lRc."date_dt", true);
+        apex_json.write('date_release_dt', lRc."date_release_dt", true);
+        apex_json.write('dt_number', lRc."dt_number", true);
+        apex_json.write('date_export_port', lRc."date_export_port", true);
+        apex_json.write('date_return_empty', lRc."date_return_empty", true);
+        apex_json.write('date_unloading_warehouse', lRc."date_unloading_warehouse", true);
+        apex_json.write('am_number', lRc."am_number", true);
+        apex_json.write('fio_driver', lRc."fio_driver", true);
       
         apex_json.close_object;
       
