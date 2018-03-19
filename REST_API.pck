@@ -827,6 +827,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     begin
       lOffset := apex_json.get_number('offset', PkgDefaultOffset);
       lLimit  := apex_json.get_number('limit', PkgDefaultLimit);
+      
+      if lOffset is null then lOffset := 0; end if;
                                       
       rest_api_helper.AddFilter('id', null, lFilter); -- Идентификатор заказа
       
