@@ -7,8 +7,8 @@ CREATE OR REPLACE PACKAGE REST_API AS
 
   PkgDefaultDateFormat varchar2(255) := 'YYYY-MM-DD HH24:MI:SS'; -- Формат даты при конвертациях в строку и обратно
   PkgDefaultDateShortFormat varchar2(255) := 'YYYY-MM-DD'; -- Формат даты при конвертациях в строку и обратно
-  PkgDefaultOffset     number := 1; -- Значение по умолчанию для переменной offset
-  PkgDefaultLimit      number := 10; -- Значение по умолчанию для переменной limit
+  PkgDefaultOffset     number := 0; -- Значение по умолчанию для переменной offset
+  PkgDefaultLimit      number := 100; -- Значение по умолчанию для переменной limit
 
   PkgDefaultPeriodIndays number := 1450; -- Период по умолчанию для всех запросов в днях
 
@@ -65,13 +65,17 @@ CREATE OR REPLACE PACKAGE REST_API AS
   /*
   Вывод списка заказов - п.4.7.3 ТЗ на АПИ
   */
-  function Orders return rest_api_err;
+  function PrintOrders return rest_api_err;
 
   /*
   Вывод информации по конкретному заказу
   */
-  function Orders_get return rest_api_err;
-
+  function PrintOrder return rest_api_err;
+  
+  /*
+  Вывод списка документов - п.4.8.5 ТЗ на АПИ
+  */
+  function PrintDocs return rest_api_err;
   /*
   Вывод списка стран
   */
@@ -102,7 +106,7 @@ CREATE OR REPLACE PACKAGE REST_API AS
   /*
   Вывод коллекции документов Ю.К. 26.06.2017
   */
-  function PrintDocs return rest_api_err;
+  function PrintDocs_depricated return rest_api_err;
 
   /*
   Функция для обновления документов
@@ -308,14 +312,19 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lError     := Errors(2);
           end if;
         WHEN 'test' THEN
-          lError := Test();
-          if lError.success != 1 then
+          if IsSessionValid() then
+            lError := Test();           
+            if lError.success != 1 then
               lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
           end if;
         -- П.4.7.3 ТЗ на АПИ - получение списка заказов
         WHEN 'orders' THEN
           if IsSessionValid() then
-            lError := Orders();           
+            lError := PrintOrders();           
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -326,8 +335,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         -- Пункт 4.7.2 ТЗ на АПИ - получение информации по заказу
         WHEN 'orders_get' THEN
           if IsSessionValid() then
-            -- lError := PrintOrder();
-            lError := Orders_get();
+            lError := PrintOrder();
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -793,7 +801,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   /*
   Вывод списка заказов - п.4.7.3 ТЗ на АПИ
   */
-  function Orders return rest_api_err is
+  function PrintOrders return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
     
@@ -825,10 +833,13 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
     -- Filters
     begin
-      lOffset := apex_json.get_number('offset', PkgDefaultOffset);
-      lLimit  := apex_json.get_number('limit', PkgDefaultLimit);
+      lOffset := apex_json.get_number(p_path    => 'offset',
+                                      p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit',
+                                      p_default => PkgDefaultLimit);
       
-      if lOffset is null then lOffset := 0; end if;
+      --if lOffset is null then lOffset := 0; end if;
+      --if lLimit is null then lLimit := 1000; end if;
                                       
       rest_api_helper.AddFilter('id', null, lFilter); -- Идентификатор заказа
       
@@ -864,7 +875,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('date_return_empty', 'date_return_empty', lFilter); -- Дата возврата порожнего
       
-      rest_api_helper.AddFilter('date_unloading_warehouse', 'date_unloading_warehouse', lFilter); -- Дата выгрузки на склад
+      rest_api_helper.AddFilter('customer_delivery_date', 'customer_delivery_date', lFilter); -- Дата выгрузки на склад
       
       rest_api_helper.AddFilter('dt_number', 'dt_number', lFilter); -- Номер ДТ
       
@@ -912,7 +923,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     -- Проверяем, изменились ли фильтры
     lFiltersPrevious := apex_util.get_preference(lCollectionName || apex_application.g_instance, lCurrentUserName);
                                                  
-    lFiltersState := '' || lFilter || lQueryFilter ||  lSorts;
+    lFiltersState := 'PrintOrdersFiltersState' || lFilter || lQueryFilter ||  lSorts;
                      
     if lFiltersPrevious = lFiltersState then
       lShouldResetCollection := false;
@@ -930,7 +941,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
        end if;
        APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
         for lRc in (select *
-                      from TABLE(mcsf_api.get_orders(pClntId => lCompanyId,
+                      from TABLE(mcsf_api.GetOrders(pClntId => lCompanyId,
                                                      pFilter => lFilter,
                                                      pQueryFilter => lQueryFilter,
                                                      pSortFilter => lSorts
@@ -962,7 +973,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c024            => lRc.dt_number,
                                      p_c025            => to_char(lRc.date_export_port,PkgDefaultDateFormat),
                                      p_c026            => to_char(lRc.date_return_empty,PkgDefaultDateFormat),
-                                     p_c027            => to_char(lRc.date_unloading_warehouse,PkgDefaultDateFormat),
+                                     p_c027            => to_char(lRc.customer_delivery_date,PkgDefaultDateFormat),
                                      p_c028            => lRc.am_number,
                                      p_c029            => lRc.fio_driver
                                      );
@@ -1001,7 +1012,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c024 "dt_number",
                          c.c025 "date_export_port",
                          c.c026 "date_return_empty",
-                         c.c027 "date_unloading_warehouse",
+                         c.c027 "customer_delivery_date",
                          c.c028 "am_number",
                          c.c029 "fio_driver"
                   
@@ -1039,7 +1050,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('dt_number', lRc."dt_number", true);
         apex_json.write('date_export_port', lRc."date_export_port", true);
         apex_json.write('date_return_empty', lRc."date_return_empty", true);
-        apex_json.write('date_unloading_warehouse', lRc."date_unloading_warehouse", true);
+        apex_json.write('customer_delivery_date', lRc."customer_delivery_date", true);
         apex_json.write('am_number', lRc."am_number", true);
         apex_json.write('fio_driver', lRc."fio_driver", true);
       
@@ -1072,7 +1083,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   /*
   Вывод информации по конкретному заказу
   */
-  function Orders_get return rest_api_err is
+  function PrintOrder return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
   
@@ -1093,14 +1104,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     -- filters
     begin
-      -- Изменение в ТЗ п. 4.7.2 : параметр data заменен на filter
-      -- 17.07.2017
+      
       lOrderId := apex_json.get_number(p_path    => 'filter.id',
                                        p_default => null);
-/*                                       
-      lOrderId := apex_json.get_number(p_path    => 'data.id',
-                                       p_default => null); 
-                                       */
     exception
       when others then
         lIsSuccess := false;
@@ -1113,7 +1119,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.open_object('data');
     
       for l_c in (select *
-                    from TABLE(mcsf_api.fn_orders_get(pID     => lOrderId,
+                    from TABLE(mcsf_api.GetOrderById(pID     => lOrderId,
                                                       pClntId => lCompanyId))) loop
       
         cou := cou + 1; -- to catch Not Found, 17.07.2017
@@ -1128,6 +1134,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                         true);                        
        -- apex_json.write('status', l_c.status, true);
         -- messages[]
+        /*
+        Пункт 4.7.2 в ответе убран параметр messages
         open lRc for
           select m.id "id",
                  m.from_mes "from_mes",
@@ -1136,7 +1144,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                  m.status "status",
                  m.order_id "order_id"
             from table(l_c.messages) m;
-        apex_json.write('messages', lRc);
+        apex_json.write('messages', lRc);*/
       
         -- Информация о грузе по заказу - cargo
         apex_json.open_array('cargo');      
@@ -1160,7 +1168,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.open_array('doc');
         for elem in 1 .. l_c.doc.count loop
           apex_json.open_object;
-          rest_api_helper.PrintOrder_Docs(l_c.doc(elem));
+          rest_api_helper.PrintT_DOC(l_c.doc(elem));
           apex_json.close_object;                   
         end loop;
         apex_json.close_array;
@@ -1171,61 +1179,43 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         --apex_json.write('receivable_status', l_c.receivable_status, true);
         apex_json.write('departure_port', l_c.departure_port, true);
         apex_json.write('departure_country', l_c.departure_country, true);
-        apex_json.write('container_type', l_c.container_type, true);
+        apex_json.write('te_type', l_c.container_type, true);
         apex_json.write('container_prefix', l_c.container_prefix, true);
         apex_json.write('container_number', l_c.container_number, true);
-        apex_json.write('date_shipment',
-                        to_char(l_c.date_shipment, PkgDefaultDateFormat),
-                        true);
-        apex_json.write('date_transshipment',
-                        to_char(l_c.date_transshipment,
-                                PkgDefaultDateFormat),
-                        true);
-        apex_json.write('date_arrival',
-                        to_char(l_c.date_arrival, PkgDefaultDateFormat),
-                        true);
-        apex_json.write('date_upload',
-                        to_char(l_c.date_upload, PkgDefaultDateFormat),
-                        true);
-        apex_json.write('date_export',
-                        to_char(l_c.date_export, PkgDefaultDateFormat),
-                        true);
-        apex_json.write('date_submission',
-                        to_char(l_c.date_submission, PkgDefaultDateFormat),
-                        true);
+        apex_json.write('shipment_date', to_char(l_c.date_shipment, PkgDefaultDateFormat), true);
+        apex_json.write('date_transshipment', to_char(l_c.date_transshipment, PkgDefaultDateFormat), true);
+        apex_json.write('date_arrival', to_char(l_c.date_arrival, PkgDefaultDateFormat), true);
+        apex_json.write('date_upload', to_char(l_c.date_upload, PkgDefaultDateFormat), true);
+        apex_json.write('date_export', to_char(l_c.date_export, PkgDefaultDateFormat), true);
+        apex_json.write('customer_delivery_date', to_char(l_c.customer_delivery_date, PkgDefaultDateFormat), true);
+        apex_json.write('date_submission', to_char(l_c.date_submission, PkgDefaultDateFormat), true);
         apex_json.write('arrival_city', l_c.arrival_city, true);
         apex_json.write('arrival_port', l_c.arrival_port, true);
        -- apex_json.write('arrival_ship', l_c.arrival_ship, true);
         apex_json.write('gtd_number', l_c.gtd_number, true);
-        apex_json.write('gtd_date',
-                        to_char(l_c.gtd_date, PkgDefaultDateFormat),
-                        true);
-        apex_json.write('gtd_issuance',
-                        to_char(l_c.gtd_issuance, PkgDefaultDateFormat),
-                        true);
-        -- rummage_dates[]
-        apex_json.open_array('rummage');
-      
-        for elem in 1 .. l_c.rummage.count loop
-          apex_json.write(l_c.rummage(elem).type_rummage);          
-          apex_json.write(l_c.rummage(elem).date_rummage);
+        apex_json.write('gtd_date', to_char(l_c.gtd_date, PkgDefaultDateFormat), true);
+        apex_json.write('gtd_issuance', to_char(l_c.gtd_issuance, PkgDefaultDateFormat), true);
+        
+        -- rummages
+        apex_json.open_array('rummages');
+        for elem in 1 .. l_c.rummages.count loop
+          rest_api_helper.PrintT_RUMMAGE(l_c.rummages(elem));
         end loop;
         apex_json.close_array;
       
-        -- invoices[] YK, 23.07.2017:
+        -- invoices[]
         apex_json.open_array('invoices'); -- invoices in the order:
         for elem in 1 .. l_c.invoices.count loop
           apex_json.open_object;
-          apex_json.write('id', l_c.invoices(elem).id);
-          apex_json.write('total', l_c.invoices(elem).total);
-          apex_json.write('paid', l_c.invoices(elem).paid);
-          apex_json.write('pay_to',
-                          to_char(l_c.invoices(elem).pay_to,
-                                  REST_API.PkgDefaultDateFormat));
-          apex_json.write('currency', l_c.invoices(elem).currency);
+          rest_api_helper.PrintT_INVOICE(l_c.invoices(elem));
           apex_json.close_object;
         end loop;
         apex_json.close_array;
+        
+        -- delivery_car
+        apex_json.open_object('delivery_car');          
+        rest_api_helper.PrintT_DELIVERY_CAR(l_c.delivery_car);
+        apex_json.close_object;  
       
       end loop;
     
@@ -1239,6 +1229,234 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     return lError;
   
+  end;
+  
+  /*
+  Вывод списка документов - п.4.8.5 ТЗ на АПИ
+  */
+  function PrintDocs return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+    
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+  
+    lCollectionName   varchar2(255) := 'DOCS';
+    lCollectionExists boolean;
+  
+    lOffset number;
+    lLimit  number;
+    
+    lFiltersState    varchar2(4000) := null;
+    lFiltersPrevious varchar2(4000) := null;
+  
+    lShouldResetCollection boolean := true;
+    lColectionCount        number := 0;
+    
+    -- Filters
+    lFilter varchar2(4000);
+    lQueryFilter varchar2(200);
+    
+    -- Sort
+    lSorts varchar2(200);
+    
+    lXmlTemp XMLTYPE;
+    lCursor sys_refcursor;
+    lFileRecTemp mcsf_api_helper.t_mcsf_api_order_doc_file_rec;
+    
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
+    
+    -- Filters
+    begin
+      lOffset := apex_json.get_number(p_path    => 'offset',
+                                      p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit',
+                                      p_default => PkgDefaultLimit);
+                                      
+      rest_api_helper.AddFilter('id', null, lFilter);
+      
+      rest_api_helper.AddFilter('order_id', null, lFilter);
+      
+      rest_api_helper.AddFilter('type_id', null, lFilter);
+      
+      rest_api_helper.AddFilter('doc_type', null, lFilter);
+      
+      rest_api_helper.AddFilter('doc_date', null, lFilter);
+      
+      rest_api_helper.AddFilter('uploaded_at', null, lFilter);
+      
+      rest_api_helper.AddFilter('owner', null, lFilter);
+      
+      rest_api_helper.AddFilter('files', null, lFilter);
+      
+      
+      lQueryFilter := replace(apex_json.get_varchar2('data.query', null), '''', '"');
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+    
+    -- Order by
+    begin
+      
+      rest_api_helper.AddSortFilter('id', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('order_id', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('type_id', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('doc_type', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('doc_date', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('uploaded_at', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('owner', null, lSorts);
+      
+      rest_api_helper.AddSortFilter('files', null, lSorts);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(6);
+    end;
+    
+    -- Проверяем, изменились ли фильтры
+    lFiltersPrevious := apex_util.get_preference(lCollectionName || apex_application.g_instance, lCurrentUserName);
+                                                 
+    lFiltersState := lCollectionName || lFilter || lQueryFilter ||  lSorts;
+                     
+    if lFiltersPrevious = lFiltersState then
+      lShouldResetCollection := false;
+    end if;
+    
+    lShouldResetCollection := true;
+  
+    apex_util.set_preference(lCollectionName || apex_application.g_instance, lFiltersState, lCurrentUserName);
+    
+    if lIsSuccess then
+      -- Формирование коллекции
+       if lShouldResetCollection then
+          lCollectionExists := APEX_COLLECTION.COLLECTION_EXISTS(lCollectionName);
+      
+         if lCollectionExists then
+            APEX_COLLECTION.DELETE_COLLECTION(lCollectionName);
+         end if;
+         
+         APEX_COLLECTION.CREATE_COLLECTION(lCollectionName);
+         
+         for lRc in (select * from TABLE(mcsf_api.GetDocuments(pClntId => lCompanyId,
+                                                             pFilter => lFilter,
+                                                             pQueryFilter => lQueryFilter,
+                                                             pSortFilter => lSorts
+                                                             ))) 
+         loop
+           
+           begin
+             open lCursor for select * from table( lRc.files );
+              
+             lXmlTemp := xmltype(lCursor);
+             
+             close lCursor;
+           exception
+             when others then
+               lXmlTemp := null;
+           end;
+           
+           APEX_COLLECTION.ADD_MEMBER(p_collection_name => lCollectionName,
+                                         p_c001            => lRc.id,
+                                         p_c002            => lRc.order_id,
+                                         p_c003            => lRc.type_id,
+                                         p_c004            => lRc.doc_type,
+                                         p_c005            => to_char(lRc.doc_date,PkgDefaultDateFormat),
+                                         p_c006            => to_char(lRc.uploaded_at,PkgDefaultDateFormat),
+                                         p_c007            => lRc.owner,
+                                         p_xmltype001      => lXmlTemp
+                                         );
+                                         null;
+         end loop;
+      end if;
+      
+      -- Постраничный вывод данных из коллекции
+    
+      apex_json.open_array('data');
+      
+      for lRc in (select c.seq_id "seq_id",
+                         to_number(c.c001) "id",
+                         to_number(c.c002) "order_id",
+                         to_number(c.c003) "type_id",
+                         c.c004 "doc_type",
+                         c.c005 "doc_date",
+                         c.c006 "uploaded_at",
+                         c.c007 "owner",
+                         c.xmltype001 "files"
+                    from apex_collections c
+                   where c.collection_name = lCollectionName
+                     and c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+        
+        apex_json.open_object;
+        
+        apex_json.write('seq_id', lRc."seq_id", true);
+        apex_json.write('id', lRc."id", true);
+        apex_json.write('order_id', lRc."order_id", true);
+        apex_json.write('type_id', lRc."type_id", true);
+        apex_json.write('doc_type', lRc."doc_type", true);
+        apex_json.write('doc_date', lRc."doc_date", true);
+        apex_json.write('uploaded_at', lRc."uploaded_at",true);              
+        apex_json.write('owner', lRc."owner", true);
+        
+        if lRc."files" is not null then
+          /*apex_json.open_array('files');
+        
+          open lCursor for select lRc."files" from dual;
+          
+          fetch lCursor into lFileRecTemp; 
+       
+          exit when lCursor%notfound;
+          
+          close lCursor;
+          
+          apex_json.close_array;*/
+          
+          /*apex_json.write('files', lRc."files", false);*/
+          
+          apex_json.write('files', lRc."files".getclobval(), false);
+          
+        else
+          apex_json.open_array('files');
+          apex_json.close_array;
+        end if;
+        
+        apex_json.close_object;
+        
+      end loop;
+      
+      apex_json.close_array;
+      
+      -- Pager
+      apex_json.open_object('pager');
+      
+      apex_json.write('offset', lOffset);
+      
+      select count(c.seq_id)
+        into lColectionCount
+        from apex_collections c
+       where c.collection_name = lCollectionName;
+      
+      apex_json.write('total', lColectionCount);
+      
+      apex_json.close_object();
+      
+      
+    end if;
+    
+    return lError;
+    
   end;
 
   /*
@@ -1539,7 +1757,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
           fetch lRc bulk collect into lDocs;
         close lRc;
         for elem in lDocs.first .. lDocs.last loop
-          rest_api_helper.PrintT_DOCS(lDocs(elem));
+          rest_api_helper.PrintT_DOCS_depricated(lDocs(elem));
         end loop;
         -- Ю.К., 21.06.2017:
         apex_json.open_array('files');
@@ -1547,7 +1765,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                       from table(mcsf_api.fn_doc_files(p_doc_id => lDocId)) -- проверка по компании не нужна, exception no_data_found произойдет раньше.
                     ) loop
           apex_json.open_object;
-          rest_api_helper.PrintT_FILES(cur);
+          rest_api_helper.PrintT_FILES_depricated(cur);
           apex_json.close_object;
         end loop;
         apex_json.close_array;
@@ -1567,7 +1785,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   -- Ю.К. 23.06.2017
   -- 4.8.5 Получение коллекции
   -- Название операции: orders_docs
-  function PrintDocs return rest_api_err is
+  function PrintDocs_depricated return rest_api_err is
     lIsSuccess       boolean := true;
     lError           rest_api_err := Errors(1);
     lCurrentUserName varchar2(255);
@@ -1664,14 +1882,14 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         -- Copy from single doc function and place in fetch cycle:
         -- Doc attributes -> JSON
         apex_json.open_object;
-        rest_api_helper.PrintT_DOCS(c);
+        rest_api_helper.PrintT_DOCS_depricated(c);
         -- Attached files -> JSON
         apex_json.open_array('files');
         for c1 in (select *
                      from table(mcsf_api.fn_doc_files(p_doc_id => c.id)) -- проверка по компании не нужна, документы уже отобраны.
                    ) loop
           apex_json.open_object;
-          rest_api_helper.PrintT_FILES(c1);
+          rest_api_helper.PrintT_FILES_depricated(c1);
           apex_json.close_object;
         end loop;
         apex_json.close_array;
@@ -1680,7 +1898,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       apex_json.close_array;
     end if;
     return lError;
-  end PrintDocs;
+  end;
 
   /*
   Функция для обновления документов
@@ -3030,8 +3248,19 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lColectionCount number := 0;
   
     lVal varchar2(1000);
+    
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
   
   begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
+    
+    apex_json.open_object('test');
+    apex_json.write('lCompanyId', lCompanyId, true);
+    apex_json.close_object;
+    return lError;
+  
     -- filters
     begin
       lOffset := apex_json.get_number(p_path    => 'offset',

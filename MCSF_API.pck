@@ -1,33 +1,46 @@
 create or replace package MCSF_API is
-
-  -- Author  : A. STARSHININ
-  -- Created : 04.12.2016 20:56:58
-  -- Purpose : Пакет хранимых процедур для построения интернет-портала МКСФ
+  
+  -- Пакет хранимых процедур для построения интернет-портала МКСФ
   
   PkgDefaultDateFormat varchar2(255) := 'YYYY-MM-DD HH24:MI:SS'; -- Формат даты при конвертациях в строку и обратно
+  
+  /* 
+  Тип Документы: t_doc и t_docs
+  */ 
+  type t_doc is record(
+    id documents.dcmt_id%type,            -- Идентификатор документа
+    order_id doc_links.ord_ord_id%type,   -- Идентификатор заказа
+    type_id doc_types_dic.dctp_id%type,   -- Идентификатор типа документа
+    doc_type doc_types.def%type,          -- Наименование типа документа
+    doc_date documents.doc_date%type,     -- Дата документа
+    uploaded_at documents.navi_date%type, -- Дата загрузки
+    owner documents.navi_user%type        -- Владелец документа
+ );
+ 
+ type tbl_docs is table of t_doc; 
 
---*********************************************************************************************************************
+
 -- Выдача списка заказов (orders)
 --*********************************************************************************************************************
-  type t_Order is record (
-   id                  t_orders.ord_id%type,                 -- Код заказа (id)
-   place_from          t_loading_places.address_source%type, -- Адрес отправки
-   place_to            t_loading_places.address_source%type, -- Адрес назначения
-   status              order_statuses.def%type,              -- Оперативный статус заказа
-   status_id           order_statuses.orst_id%type,          -- Идентификатор статуса
-   date_closed         t_orders.complete_date%type,          --  Дата завершения заказа. Возвращается типом string
-   receivables         number(15,2),                         -- Сумма задолженности по заказу
-   amount              number(15,2),                         -- Оплаченная сумма
-   notification_count  number(15,2),                         -- Кол-во уведомлений 
-   cargo_name          freights.def%type,                    -- Наименование груза
-   contractor          clients.client_name%type,             -- Наименование грузоотправителя
-   created_at          client_requests.ord_date%type,        -- Дата создания заказа
-   date_from           t_loading_places.source_date_plan%type,-- Дата отправки заказа
-   date_to             t_loading_places.source_date_plan%type,-- Дата прибытия заказа
-   te_info             varchar2(500),                        -- Номер и тип ТЕ
-   port_svh            ports.def%type,                       -- Порт СВХ
-   departure_country       countries.def%type,               -- Страна происхождения груза
-   shipment_date       konosaments.pol_date%type,             -- Дата погрузки судна
+  type t_order_record is record (
+   id                  t_orders.ord_id%type,                   -- Код заказа (id)
+   place_from          t_loading_places.address_source%type,   -- Адрес отправки
+   place_to            t_loading_places.address_source%type,   -- Адрес назначения
+   status              order_statuses.def%type,                -- Оперативный статус заказа
+   status_id           order_statuses.orst_id%type,            -- Идентификатор статуса
+   date_closed         t_orders.complete_date%type,            --  Дата завершения заказа. Возвращается типом string
+   receivables         number(15,2),                           -- Сумма задолженности по заказу
+   amount              number(15,2),                           -- Оплаченная сумма
+   notification_count  number(15,2),                           -- Кол-во уведомлений 
+   cargo_name          freights.def%type,                      -- Наименование груза
+   contractor          clients.client_name%type,               -- Наименование грузоотправителя
+   created_at          client_requests.ord_date%type,          -- Дата создания заказа
+   date_from           t_loading_places.source_date_plan%type, -- Дата отправки заказа
+   date_to             t_loading_places.source_date_plan%type, -- Дата прибытия заказа
+   te_info             varchar2(500),                          -- Номер и тип ТЕ
+   port_svh            ports.def%type,                         -- Порт СВХ
+   departure_country       countries.def%type,                 -- Страна происхождения груза
+   shipment_date       konosaments.pol_date%type,              -- Дата погрузки судна
    unload_transhipment_plan_date       konosaments.pol_date%type,             -- Дата подхода в порт перевалки
    unload_destination_plan_date       order_cnsm_mv.arrival_date%type,             -- Дата подхода в порт/СВХ назначения
    unload_destination_fact_date       vVouchers.voch_date%type,             -- Дата выгрузки в порту/СВХ назначения (факт)
@@ -36,20 +49,23 @@ create or replace package MCSF_API is
    dt_number                          gtds.gtd_number%type, -- Номер ДТ
    date_export_port                          order_ways.date_out%type, -- Дата вывоза из порта
    date_return_empty                         order_ways.date_plan%type, -- Дата возврата порожнего
-   date_unloading_warehouse                  order_ways.date_plan%type, -- Дата выгрузки на склад
+   customer_delivery_date                  order_ways.date_plan%type, -- Дата выгрузки на склад - полагаю, что это дата доставки к клиенту ( в СиМобайл "дата прибытия в пункт назначения")
    am_number                                 cars.state_number%type, -- Номер АМ
    fio_driver                                cmrs.driver_name%type -- ФИО водителя
   );
-  type tbl_Orders is table of t_Order;
+  type tbl_orders is table of t_order_record;
 
- function Get_Orders(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
+ function GetOrders(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
                      pFilter varchar2 default null,
                      pQueryFilter varchar2 default null,
                      pSortFilter varchar2 default null
                      ) 
-   return tbl_Orders pipelined parallel_enable;          
+   return tbl_orders pipelined parallel_enable;
+             
 --*********************************************************************************************************************
--- Получение информации по заказу (orders_get)
+
+
+-- Получение информации по заказу (orders_get) ТЗ 4.7.2
 --*********************************************************************************************************************
 /*
 -- Invoices. YK, 22.07.2014:
@@ -68,7 +84,7 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
 -- YK.
 */
 
- type t_Ord is record (
+ type t_order_extended_record is record (
    id                  t_orders.ord_id%type,                 -- Идентификатор заказа
    consignor           clients.client_name%type,             -- Грузоотправитель (Контрагент)
    consignee           clients.client_name%type,             -- Грузополучатель (Контрагент)
@@ -78,11 +94,11 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    messages            tbl_message,                          -- Сообщения менеджера 
    cargo               tbl_cargo,                            -- Информация о грузе 
    unit                tbl_unit,                             -- Информация о ТЕ
-   doc                 tbl_order_docs,                       -- Прилагаемые документы 
-   -- receivable_cost     invoices.price%type,                  -- Сумма задолженности
-   -- amount_cost         invoices.price%type,                  -- Оплаченная сумма
-   -- receivable_date     invoices.pay_date%type,               -- Срок погашения
-   -- receivable_status   varchar2(500),                        -- Статус задолженности
+   doc                 tbl_mcsf_api_order_docs,              -- Прилагаемые документы 
+   -- receivable_cost     invoices.price%type,               -- Сумма задолженности
+   -- amount_cost         invoices.price%type,               -- Оплаченная сумма
+   -- receivable_date     invoices.pay_date%type,            -- Срок погашения
+   -- receivable_status   varchar2(500),                     -- Статус задолженности
    departure_port      ports.def%type,                       -- Порт отправления
    departure_country   countries.def%type,                   -- Страна отправления   
    container_type      conteiner_types.def%type,             -- Тип контейнера  
@@ -93,27 +109,39 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    date_arrival        transport_time_table.arrival_date%type,-- Дата прибытия 
    date_upload         vouchers.voch_date%type,              -- Дата выгрузки
    date_export         cmrs.date_out%type,                   -- Дата вывоза
+   customer_delivery_date         cmrs.date_in%type,         -- Дата доставки клиенту
    date_submission     order_ways.date_plan%type,            -- Дата сдачи порожнего 
    arrival_city        cities.def%type,                      -- Город прибытия
    arrival_port        ports.def%type,                       -- Порт прибытия 
- --  arrival_ship        ships.def%type,                       -- Судно (Фидер) 
+ --  arrival_ship        ships.def%type,                     -- Судно (Фидер) 
    gtd_number          gtds.gtd_number%type,                 -- ГТД номер
    gtd_date            gtds.gtd_date%type,                   -- Дата ГТД    
    gtd_issuance        gtds.date_out%type,                   -- Дата выпуска ГТД
-  -- data_logisticians   varchar2(1000),                       -- Данные о логистах
-   rummage_count       number(10),                           -- Количество таможенных досмотров   
-   rummage             tbl_rummage,                           -- Даты и виды досмотра 
--- YK, 22.07.2017:
-   invoices            tbl_invcs_in_ord                      -- Массив счетов по заказу
+  -- data_logisticians   varchar2(1000),                     -- Данные о логистах
+   rummages_count      number(10),                           -- Количество таможенных досмотров   
+   rummages            tbl_mcsf_api_rummages,                -- Даты и виды досмотра 
+   invoices            tbl_mcsf_api_invoices,                -- Массив счетов по заказу
+   delivery_car        t_mcsf_api_delivery_car               -- Информация об автомобиле доставки и водителе
  );
-  type tbl_Ords is table of t_Ord;
+  type tbl_orders_extended is table of t_order_extended_record;
   
   -- Функция выдачи данных по заказу
-  -- Фильтр для отбора данных: ИД заказа и ИД Клиента. Цель - избежать ситуации выдачи данных по "чужим" заказам
-  -- Т.е. пользователю портала выдаются заказы только его компании
-  function fn_orders_get(pID t_orders.ord_id%type,
-                         pClntId clients_dic.clnt_id%type)
-           return tbl_Ords pipelined parallel_enable;  
+  function GetOrderById(pID t_orders.ord_id%type, pClntId clients_dic.clnt_id%type) return tbl_orders_extended pipelined parallel_enable;  
+
+--*********************************************************************************************************************
+
+
+-- Выдача списка документов (orders_docs) ТЗ 4.8.5
+--*********************************************************************************************************************
+ function GetDocuments(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
+                     pFilter varchar2 default null,
+                     pQueryFilter varchar2 default null,
+                     pSortFilter varchar2 default null
+                     ) 
+   return tbl_mcsf_api_order_docs pipelined parallel_enable;
+   
+--*********************************************************************************************************************
+           
   -- Функия проверки принадлежености заказа Клиенту, которому принадлежит текущий пользователь портала для Клиентов          
   function CheckOwnerOrder(pId t_orders.ord_id%type,
                            pClntId clients_dic.clnt_id%type) return boolean; 
@@ -181,16 +209,6 @@ function fn_doc_types return tbl_doc_types pipelined parallel_enable;
 -----------------------------------------------------------------------------
 --- Работа с документами
 --- Выдача документа  
-type t_docs is record(
-  id documents.dcmt_id%type,            -- Идентификатор документа
-  order_id doc_links.ord_ord_id%type,   -- Идентификатор заказа
-  type_doc doc_types_dic.dctp_id%type,  -- Идентификатор типа документа
-  name_doc doc_types.def%type,          -- Наименование типа документа
-  date_doc documents.doc_date%type,     -- Дата документа
-  uploaded_at documents.navi_date%type, -- Дата загрузки
-  owner documents.navi_user%type        -- Владелец документа
- );
-type tbl_docs is table of t_docs; 
 function fn_orders_doc(pID documents.dcmt_id%type,
                        pClntId clients_dic.clnt_id%type) return tbl_docs pipelined parallel_enable; 
 -- Ю.К. 26.06.2017
@@ -500,15 +518,14 @@ end MCSF_API;
 /
 create or replace package body MCSF_API is
 
+-- Выдача списка заказов (orders) ТЗ 4.7.3
 --*********************************************************************************************************************
--- Выдача списка заказов (orders)
---*********************************************************************************************************************
- function Get_Orders(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
+ function GetOrders(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
                      pFilter varchar2 default null,
                      pQueryFilter varchar2 default null,
                      pSortFilter varchar2 default null
                      ) 
-   return tbl_Orders pipelined parallel_enable is
+   return tbl_orders pipelined parallel_enable is
  
    lQuery varchar2(32000);
    lQueryCols varchar2(32000);
@@ -516,7 +533,7 @@ create or replace package body MCSF_API is
    lQueryWhere varchar2(32000);
  
    lCursor sys_refcursor;
-   lRow    t_Order;
+   lRow    t_order_record;
    
    type tColsArr is table of varchar2(1200) index by varchar2(60);
    
@@ -543,7 +560,7 @@ create or replace package body MCSF_API is
    lColsArr('created_at') := 'cl.ord_date'; -- Дата создания заказа
    lColsArr('date_from') := 'lp.source_date_plan'; -- Дата отправки заказа
    lColsArr('date_to') := 'dp.source_date_plan'; -- Дата прибытия заказа
-   lColsArr('te_info') := '(case when con.cont_number is Null then null else con.cont_number||'' (''||ctp.def||'')''end )'; -- Номер и тип ТЕ
+   lColsArr('te_info') := '(case when con.cont_number is Null then null else con.cont_index || con.cont_number || '' (''||ctp.def||'')''end )'; -- Номер и тип ТЕ
    lColsArr('port_svh') := 'mcsf_api.GetPOD_ord(o.ord_id)'; -- Порт СВХ
    lColsArr('departure_country') := 'cou_lp.def'; -- Страна отправления груза
    lColsArr('shipment_date') := '(select distinct first_value(k.pol_date) over (order by k.knsm_date asc) 
@@ -564,7 +581,7 @@ create or replace package body MCSF_API is
    
    lColsArr('date_export_port') := 'ow3.date_out'; -- Дата вывоза из порта
    lColsArr('date_return_empty') := 'ow3.date_plan'; -- Дата возврата порожнего
-   lColsArr('date_unloading_warehouse') := 'null'; -- Дата возврата порожнего
+   lColsArr('customer_delivery_date') := 'c.date_in'; -- Дата выгрузки на склад - полагаю, что это дата доставки к клиенту ( в СиМобайл "дата прибытия в пункт назначения")
    
    lColsArr('am_number') := 'car.state_number'; -- Номер АМ
    lColsArr('fio_driver') := 'c.driver_name'; -- ФИО водителя
@@ -595,7 +612,7 @@ create or replace package body MCSF_API is
                  lColsArr('dt_number') || ' dt_number, ' ||
                  lColsArr('date_export_port') || ' date_export_port, ' ||
                  lColsArr('date_return_empty') || ' date_return_empty, ' ||
-                 lColsArr('date_unloading_warehouse') || ' date_unloading_warehouse, ' ||
+                 lColsArr('customer_delivery_date') || ' customer_delivery_date, ' ||
                  lColsArr('am_number') || ' am_number, ' ||
                  lColsArr('fio_driver') || ' fio_driver ';
    
@@ -697,7 +714,7 @@ create or replace package body MCSF_API is
                lColsArr('dt_number') || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_export_port') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_return_empty') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
-               'to_char(' || lColsArr('date_unloading_warehouse') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('customer_delivery_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                lColsArr('am_number') || ' || '' '' || ' ||
                lColsArr('fio_driver') || '
              ) like lower(''%' || pQueryFilter || '%'')';
@@ -720,21 +737,22 @@ create or replace package body MCSF_API is
    return;
  end;
 --*********************************************************************************************************************
--- Получение информации по заказу (orders_get)
+
+
+-- Получение информации по заказу (orders_get) ТЗ 4.7.2
 --*********************************************************************************************************************
- function fn_orders_get(pID t_orders.ord_id%type,
-                        pClntId clients_dic.clnt_id%type)
-           return tbl_Ords pipelined parallel_enable  
+ function GetOrderById(pID t_orders.ord_id%type, pClntId clients_dic.clnt_id%type) return tbl_orders_extended pipelined parallel_enable  
  is 
-  vRow t_Ord;
-  vRow_rummage t_rummage;
-  vRow_doc t_order_docs;
+  vRow t_order_extended_record;
+  vRow_rummage t_mcsf_api_rummage;
+  vRow_doc t_mcsf_api_order_doc;
   vRow_unit t_unit;
   vRow_cargo t_cargo;
-  vRow_messages t_message;
+  --vRow_messages t_message;
+  vRow_doc_files tbl_mcsf_api_order_doc_files;
 -- Invoices. YK, 22.07.2017:
-  vRow_invcs_in_ord t_invcs_in_ord; -- счета в интересующем заказе
-  --vTab_ords_in_invc tbl_ords_in_invc; -- заказы в счетах интересующего заказа
+  vRow_invcs_in_ord t_mcsf_api_invoice; -- счета в интересующем заказе
+  vTab_ords_in_invc tbl_mcsf_api_order_ids; -- заказы в счетах интересующего заказа
   i integer;
  begin
     for cur in (
@@ -807,14 +825,18 @@ create or replace package body MCSF_API is
                   k.knsm_id = ko.knsm_knsm_id) date_transshipment,-- Дата подхода в порт перевалки
              oc.arrival_date date_arrival,-- Дата прибытия       
              nvl(vd.voch_date, ow1.voch_date) date_upload,-- Дата выгрузки       
-             ow3.date_out date_export,-- Дата вывоза       
+             ow3.date_out date_export,-- Дата вывоза  
+             c.date_in customer_delivery_date, -- Дата доставки клиенту
              ow3.date_plan date_submission,-- Дата сдачи порожнего    
              cit_pod.def arrival_city,-- Город прибытия      
              p_pod.def arrival_port,-- Порт прибытия       
              -- s.def arrival_ship,-- Судно (Фидер)       
              g.gtd_number gtd_number,-- ГТД номер        
              g.gtd_date gtd_date,  -- Дата ГТД    
-             g.date_out gtd_issuance -- Дата выпуска ГТД                   
+             g.date_out gtd_issuance, -- Дата выпуска ГТД
+             c.driver_name,
+             c.driver_phone,
+             car.state_number                   
          from t_orders o,
              clrq_orders co, 
              client_requests cl,  
@@ -834,7 +856,10 @@ create or replace package body MCSF_API is
              clients cl_dp,
              ships s,
              conteiner_types ct,
-             order_statuses ost
+             order_statuses ost,
+             cmrs c,
+             cars car,
+             vcmrs_last cmrl
        where o.ord_id = pID 
          and co.clrq_clrq_id   = cl.clrq_id 
          and cl.clnt_clnt_id   = pClntId      -- Отбор заказа не только по ИД заказа, но и по ИД клиента
@@ -877,6 +902,11 @@ create or replace package body MCSF_API is
          and o.ord_id            = ow3.ord_ord_id(+)
          and ow3.orws_type(+)    = 3
          and ow3.del_user(+) is Null
+         -- Машина и водитель
+         and ow3.orws_id         = cmrl.orws_orws_id(+)
+         and cmrl.cmr_id         = c.cmr_id(+)
+         and c.car_car_id        = car.car_id(+)
+                  
          )
     loop
        vRow.id := cur.id;                 -- Идентификатор заказа
@@ -886,6 +916,8 @@ create or replace package body MCSF_API is
        vRow.date_closed := cur.date_closed;  -- Дата закрытия заказа
      --  vRow.status := cur.status;         -- Текущий статус заказа 
        -- Сообщения менеджера  -------------------------
+       /*
+       Пункт 4.7.2 в ответе убран параметр messages
        vRow.messages := tbl_message();
        i := 0;
        for c1 in (select ms.mscm_id,
@@ -910,7 +942,7 @@ create or replace package body MCSF_API is
              i := i + 1;                            
              vRow.messages.extend;
              vRow.messages(i) :=  vRow_messages;
-       end loop;      
+       end loop;   */   
        -- Информация о грузе ---------------------------
        vRow.cargo := tbl_cargo();
        i := 0;
@@ -939,7 +971,7 @@ create or replace package body MCSF_API is
            vRow.unit(i) :=  vRow_unit;
        end loop;    
        -- Прилагаемые документы ------------------------
-       vRow.doc       := tbl_order_docs();
+       vRow.doc       := tbl_mcsf_api_order_docs();
        i := 0;
        for c4 in (select d.dcmt_id id, 
                          vRow.id order_id,
@@ -953,14 +985,18 @@ create or replace package body MCSF_API is
                          d.del_date is null and
                          d.dcmt_id (+) = dl.dcmt_dcmt_id and
                          dt.dctp_id (+)= d.dctp_dctp_id ) loop
-          vRow_doc := t_order_docs(c4.id, -- Идентификатор
-                                  c4.order_id, -- Идентификатор заказа
-                                  c4.type_id,  -- Идентификатор типа документа
-                                  c4.doc_type, -- Наименование документа
-                                  c4.doc_date, -- Дата документа
-                                  c4.uploaded_at, -- Дата загрузки
-                                  c4.owner         -- Владелец документа
-                                   );
+                         
+          select mcsf_api_helper.GetDocFiles(c4.id) into vRow_doc_files from dual;               
+          
+          vRow_doc := t_mcsf_api_order_doc(c4.id, -- Идентификатор
+                                            c4.order_id, -- Идентификатор заказа
+                                            c4.type_id,  -- Идентификатор типа документа
+                                            c4.doc_type, -- Наименование документа
+                                            c4.doc_date, -- Дата документа
+                                            c4.uploaded_at, -- Дата загрузки
+                                            c4.owner,         -- Владелец документа
+                                            vRow_doc_files
+                                            );
           i := i +1;                         
           vRow.doc.extend;
           vRow.doc(i) := vRow_doc;
@@ -990,23 +1026,23 @@ create or replace package body MCSF_API is
        vRow.gtd_date := cur.gtd_date;
        vRow.gtd_issuance := cur.gtd_issuance;
        -- Даты досмотра  -------------------------------
-       vRow.rummage  := tbl_rummage();
+       vRow.rummages  := tbl_mcsf_api_rummages();
        i := 0;
        for rd in (select ct.def type_rummage, co.chot_date date_rummage
                     from check_outs co, check_out_types ct
                    where co.ord_ord_id = cur.id and
                          ct.chtp_id = co.chtp_chtp_id)
         loop
-         vRow_rummage := t_rummage(rd.type_rummage,    -- Вид досмотра
+         vRow_rummage := t_mcsf_api_rummage(rd.type_rummage,    -- Вид досмотра
                                         rd.date_rummage -- Дата досмотра
                                         );
          i := i + 1;                               
-         vRow.rummage.extend;
-         vRow.rummage(i)    :=  vRow_rummage;
+         vRow.rummages.extend;
+         vRow.rummages(i) := vRow_rummage;
         end loop;
         
-        -- Информация по счетам. YK, 22.07.2017 ---------
-        vRow.invoices := tbl_invcs_in_ord();
+        -- Информация по счетам
+        vRow.invoices := tbl_mcsf_api_invoices();
         for c in (
           select rownum as rn, invc_id as id, price as total,
                 (select sum(oplacheno) from invoice_details where invoice_details.invc_invc_id = inv.invc_id) as paid, 
@@ -1015,17 +1051,138 @@ create or replace package body MCSF_API is
            from invoices inv where inv.intp_intp_id = 1 and inv.invc_id in
                 (select invc_invc_id from invoice_details id where ord_ord_id = pID)
         ) loop
-          vRow_invcs_in_ord := t_invcs_in_ord(c.id, c.total, c.paid, c.pay_to, c.currency);
+          
+          select mcsf_api_helper.GetInvoiceOrderIds(c.id) into vTab_ords_in_invc from dual;
+          
+          vRow_invcs_in_ord := t_mcsf_api_invoice(c.id, c.total, c.paid, c.pay_to, c.currency, vTab_ords_in_invc);
+          
           vRow.invoices.extend;
           vRow.invoices(c.rn) := vRow_invcs_in_ord;
         end loop;
-
-       -------------------------------------------------- 
+        
+        -- Информация по машине и водителю
+        vRow.delivery_car := t_mcsf_api_delivery_car(cur.driver_name, cur.state_number, cur.driver_phone);
+         
       pipe row (vRow);      
     end loop;
     return;      
     
- end;  
+ end;
+ 
+--********************************************************************************************************************* 
+
+
+-- Выдача списка документов (orders_docs) ТЗ 4.8.5
+--*********************************************************************************************************************
+ function GetDocuments(pClntId client_requests.clnt_clnt_id%type, -- ID Клиента
+                     pFilter varchar2 default null,
+                     pQueryFilter varchar2 default null,
+                     pSortFilter varchar2 default null
+                     ) 
+   return tbl_mcsf_api_order_docs pipelined parallel_enable is
+   
+   lQuery varchar2(32000);
+   lQueryCols varchar2(32000);
+   lQueryFrom varchar2(32000);
+   lQueryWhere varchar2(32000);
+ 
+   lCursor sys_refcursor;
+   
+   lRow    t_mcsf_api_order_doc;
+   lRowRec mcsf_api_helper.t_mcsf_api_order_doc_rec;
+   lRowFiles tbl_mcsf_api_order_doc_files;
+   
+   type tColsArr is table of varchar2(1200) index by varchar2(60);
+   
+   lColsArr tColsArr;
+   
+ begin
+   lColsArr('id') := 'd.dcmt_id';
+   lColsArr('order_id') := 'dl.ord_ord_id';
+   lColsArr('type_id') := 'd.dctp_dctp_id';
+   lColsArr('doc_type') := 'dt.def';
+   lColsArr('doc_date') := 'd.doc_date';
+   lColsArr('uploaded_at') := 'd.navi_date';
+   lColsArr('owner') := 'd.navi_user';
+   lColsArr('files') := 'NULL';
+   
+   lQueryCols := lColsArr('id')          || ' id, '               ||
+                 lColsArr('order_id')    || ' order_id, '         || 
+                 lColsArr('type_id')     || ' type_id, '          ||
+                 lColsArr('doc_type')    || ' doc_type, '         ||
+                 lColsArr('doc_date')    || ' doc_date, '         ||
+                 lColsArr('uploaded_at') || ' uploaded_at, '      ||
+                 lColsArr('owner')       || ' owner ';
+                 
+   lQueryFrom := '
+                 documents       d,
+                 doc_links       dl,
+                 doc_types       dt,
+                 t_orders        o,
+                 clrq_orders     clrq,
+                 client_requests cl
+   ';
+   
+   lQueryWhere := '
+                 d.doc_state = 0
+                 and dl.dcmt_dcmt_id = d.dcmt_id
+                 and o.ord_id = dl.ord_ord_id
+                 and clrq.ord_ord_id = o.ord_id
+                 and cl.clrq_id = clrq.clrq_clrq_id
+                 and cl.clnt_clnt_id = :pClntId
+                 and dt.dctp_id = d.dctp_dctp_id
+   ';
+   
+   lQuery := 'select ' || lQueryCols || ' from ' || lQueryFrom || ' where ' || lQueryWhere;
+   
+   if pQueryFilter is not null then
+     lQuery := lQuery || ' and lower(' ||
+               lColsArr('id') || ' || '' '' || ' ||
+               lColsArr('order_id') || ' || '' '' || ' ||
+               lColsArr('doc_type') || ' || '' '' || ' ||
+               'to_char(' || lColsArr('uploaded_at') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               lColsArr('order_id') || ' || '' '' || ' ||
+               lColsArr('owner') || ' || '' '' || ' ||
+               lColsArr('files') || '
+             ) like lower(''%' || pQueryFilter || '%'')';
+   end if;
+   
+   if pFilter is not null then
+     lQuery := 'select * from (' || lQuery || ') where ' || pFilter;
+   end if;
+   
+   if pSortFilter is not null then
+     lQuery := lQuery || ' order by ' || pSortFilter;
+   end if;
+   
+   open lCursor for lQuery using pClntId;
+ 
+   loop 
+     fetch lCursor into lRowRec; 
+     
+     exit when lCursor%notfound;
+     
+     select mcsf_api_helper.GetDocFiles(lRowRec.id) into lRowFiles from dual;
+     
+     lRow := t_mcsf_api_order_doc(
+          lRowRec.id, 
+          lRowRec.order_id, 
+          lRowRec.type_id, 
+          lRowRec.doc_type, 
+          lRowRec.doc_date, 
+          lRowRec.uploaded_at, 
+          lRowRec.owner,
+          lRowFiles
+     ); 
+     pipe row(lRow); 
+   end loop;
+   
+   close lCursor;
+   
+ end;
+
+--*********************************************************************************************************************
+
 
 ----------------------------------------------------------
 -- Функция возврата справочника стран
@@ -1119,20 +1276,20 @@ is
   v_sql varchar2(2000);
   v_min number := p_offset;
   v_max number := p_offset + p_limit;
-  v_rec t_docs;
+  v_rec t_doc;
 begin
   v_sql := '
-              select id, order_id, type_doc, name_doc, date_doc, uploaded_at, owner
+              select id, order_id, type_id, doc_type, doc_date, uploaded_at, owner
               from
               (
-              select rownum rn, id, order_id, type_doc, name_doc, date_doc, uploaded_at, owner
+              select rownum rn, id, order_id, type_id, doc_type, doc_date, uploaded_at, owner
               from
               (
                select d.dcmt_id id,
                       dl.ord_ord_id order_id,
-                      d.dctp_dctp_id type_doc,
-                      dt.def name_doc,
-                      d.doc_date date_doc,
+                      d.dctp_dctp_id type_id,
+                      dt.def doc_type,
+                      d.doc_date doc_date,
                       d.navi_date uploaded_at,
                       d.navi_user owner
                  from documents d, doc_links dl, doc_types dt,t_orders o, clrq_orders clrq, client_requests cl

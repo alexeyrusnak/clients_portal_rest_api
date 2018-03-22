@@ -11,13 +11,20 @@ create or replace package REST_API_HELPER is
   27.11.2017  A.Starshinin
   */
   
-  procedure PrintOrder_Docs(pDoc in t_order_docs);
+  /*
+  Выводит объект T_FILE в JSON
+  */
+  procedure PrintT_FILE(pFile in t_mcsf_api_order_doc_file);
+    
+  /*
+  Выводит объект T_DOCS в JSON
+  */
+  procedure PrintT_DOC(pDoc in t_mcsf_api_order_doc);
 
   /*
   Выводит объект T_DOCS в JSON
   */
- procedure PrintT_DOCS(pDoc in mcsf_api.t_docs);
-
+  procedure PrintT_DOCS_depricated(pDoc in mcsf_api.t_doc);
 
   /*
   Выводит объект T_UNIT в JSON
@@ -33,9 +40,24 @@ create or replace package REST_API_HELPER is
   Выводит объект T_CARGO в JSON
   */
   procedure PrintT_CARGO(pCargo in T_CARGO);
+ 
+  /*
+  Выводит объект T_RUMMAGE в JSON
+  */
+  procedure PrintT_RUMMAGE(pRummage in t_mcsf_api_rummage);
+  
+  /*
+  Выводит объект T_INVOICES в JSON
+  */
+  procedure PrintT_INVOICE(pInvoice in t_mcsf_api_invoice);
+  
+  /*
+  Выводит объект T_DELIVERY_CAR в JSON
+  */
+  procedure PrintT_DELIVERY_CAR(pDeliveryCar in t_mcsf_api_delivery_car);
   
 -- Ю.К. 21.06.2017
-procedure PrintT_FILES(p_files in mcsf_api.t_files);
+procedure PrintT_FILES_depricated(p_files in mcsf_api.t_files);
   
 -- Ю.К. 21.06.2017
 -- Литеральная реализация SQL Фильтра
@@ -99,35 +121,51 @@ create or replace package body REST_API_HELPER is
   end;
 */
 
- /*
+  /*
+  Выводит объект T_FILE в JSON
+  */
+  procedure PrintT_FILE(pFile in t_mcsf_api_order_doc_file) is
+  begin
+    apex_json.write('id', pFile.id, true);
+    apex_json.write('name', pFile.file_name, true);
+    apex_json.write('size', pFile.file_size, true);
+  end;
+  
+  /*
   Выводит объект T_DOC в JSON
   */
-  procedure PrintOrder_DOCS(pDoc in t_order_docs) is
+  procedure PrintT_DOC(pDoc in t_mcsf_api_order_doc) is
   begin
     apex_json.write('id', pDoc.id, true);
     apex_json.write('order_id', pDoc.order_id, true);
     apex_json.write('type_id', pDoc.type_id, true);
-    apex_json.write('doc_type', pDoc.doc_type, true);
-    apex_json.write('doc_date', pDoc.doc_date, true);
+    apex_json.write('type', pDoc.doc_type, true);
+    apex_json.write('date', pDoc.doc_date, true);
     apex_json.write('uploaded_at', pDoc.uploaded_at, true);
     apex_json.write('owner', pDoc.owner, true);
+    
+    apex_json.open_array('files');
+    
+    for elem in 1 .. pDoc.files.count loop
+      apex_json.open_object;
+      PrintT_FILE(pDoc.files(elem));
+      apex_json.close_object;
+    end loop;
+    
+    apex_json.close_array;
  end;
 
  /*
   Выводит объект T_DOCS в JSON
   */
-  procedure PrintT_DOCS(pDoc in mcsf_api.t_docs) is
+  procedure PrintT_DOCS_depricated(pDoc in mcsf_api.t_doc) is
   begin
     apex_json.write('id', pDoc.id, true);
     apex_json.write('order_id', pDoc.order_id, true);
-    apex_json.write('type_id', pDoc.type_doc, true);
-    apex_json.write('type', pDoc.name_doc, true);
-    apex_json.write('date',
-                    to_char(pDoc.date_doc, REST_API.PkgDefaultDateFormat),
-                    true);
-    apex_json.write('uploaded_at',
-                    to_char(pDoc.uploaded_at, REST_API.PkgDefaultDateFormat),
-                    true);
+    apex_json.write('type_id', pDoc.type_id, true);
+    apex_json.write('type', pDoc.doc_type, true);
+    apex_json.write('date', to_char(pDoc.doc_date, REST_API.PkgDefaultDateFormat),true);
+    apex_json.write('uploaded_at', to_char(pDoc.uploaded_at, REST_API.PkgDefaultDateFormat),true);
     apex_json.write('owner', pDoc.owner, true);
   end;
 
@@ -136,7 +174,7 @@ create or replace package body REST_API_HELPER is
   */
   procedure PrintT_UNIT(pUnit in T_UNIT) is
   begin
-    apex_json.write('type_unit', pUnit.type_unit, true);
+    apex_json.write('type', pUnit.type_unit, true);
     /*
     apex_json.write('transport', pUnit.transport, true);
     apex_json.write('comment_unit', pUnit.comment_unit, true);
@@ -205,14 +243,53 @@ create or replace package body REST_API_HELPER is
   
   end;
   
+  /*
+  Выводит объект T_RUMMAGE в JSON
+  */
+  procedure PrintT_RUMMAGE(pRummage in t_mcsf_api_rummage) is
+  begin
+    apex_json.write(pRummage.type_rummage, true);          
+    apex_json.write(pRummage.date_rummage, true);
+  end;
+  
+  /*
+  Выводит объект T_INVOICES в JSON
+  */
+  procedure PrintT_INVOICE(pInvoice in t_mcsf_api_invoice) is
+  begin
+    apex_json.write('id', pInvoice.id, true);
+    apex_json.write('total', pInvoice.total, true);
+    apex_json.write('paid', pInvoice.paid, true);
+    apex_json.write('pay_to', to_char(pInvoice.pay_to, REST_API.PkgDefaultDateFormat), true);
+    apex_json.write('currency', pInvoice.currency, true);
+    
+    apex_json.open_array('orders');
+    
+    for elem in 1 .. pInvoice.orders.count loop
+      apex_json.write(pInvoice.orders(elem));
+    end loop;
+    
+    apex_json.close_array;
+  end;
+  
+  /*
+  Выводит объект T_DELIVERY_CAR в JSON
+  */
+  procedure PrintT_DELIVERY_CAR(pDeliveryCar in t_mcsf_api_delivery_car) is
+  begin
+    apex_json.write('driver_fio', pDeliveryCar.driver_fio, true);
+    apex_json.write('car_number', pDeliveryCar.car_number, true);
+    apex_json.write('driver_phone', pDeliveryCar.driver_phone, true);
+  end;
+  
   -- Ю.К., 21.06.2017
-  procedure PrintT_FILES(p_files in mcsf_api.t_files)
+  procedure PrintT_FILES_depricated(p_files in mcsf_api.t_files)
   is
   begin
     apex_json.write('id', p_files.file_id, true);
     apex_json.write('name', p_files.file_name, true);
     apex_json.write('size', p_files.file_size, true);
-  end PrintT_FILES;
+  end;
 
 -- Ю.К., 22.06.2017
 function make_filter_string(
