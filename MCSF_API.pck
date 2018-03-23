@@ -141,6 +141,75 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    return tbl_mcsf_api_order_docs pipelined parallel_enable;
    
 --*********************************************************************************************************************
+
+
+-- Выдача списка документов (orders_docs) ТЗ 4.8.1
+--*********************************************************************************************************************
+function GetDocument(pClntId clients_dic.clnt_id%type,
+                     pId documents.dcmt_id%type) return t_mcsf_api_order_doc;
+                     
+--*********************************************************************************************************************
+
+
+-- Создание документа (orders_doc_create) ТЗ 4.8.1
+--*********************************************************************************************************************
+function CreateDocument(pOrdId t_orders.ord_id%type,   -- принадлежность документа заказу
+                        pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту
+                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
+                        pDocnumber documents.doc_number%type default null, -- номер документа
+                        pDocDate documents.doc_date%type default sysdate, -- дата документа
+                        pTheme documents.theme%type default null,  -- тема документа
+                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
+                        pAuthor documents.author%type default null -- автор документа
+                        ) return number;
+                        
+--*********************************************************************************************************************
+
+
+-- Обновление документа (orders_doc_create) ТЗ 4.8.2
+--*********************************************************************************************************************
+function UpdateDocument(pClntId clients_dic.clnt_id%type,     -- принадлежность документа клиенту, 
+                        pDocId documents.dcmt_id%type,        -- Идентификатор документа
+                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
+                        pDocnumber documents.doc_number%type default null, -- номер документа
+                        pDocDate documents.doc_date%type default sysdate, -- дата документа
+                        pTheme documents.theme%type default null,  -- тема документа
+                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
+                        pAuthor documents.author%type default null -- автор документа
+                        ) return boolean;
+                        
+--*********************************************************************************************************************
+
+
+-- Удаление документа (orders_doc_delete) ТЗ 4.8.4
+--*********************************************************************************************************************                       
+function RemoveDocument(pClntId clients_dic.clnt_id%type,  -- принадлежность документа клиенту
+                        pDocId documents.dcmt_id%type      -- идентификатор документа
+                        ) return boolean;
+                        
+--*********************************************************************************************************************
+
+
+-- Добавление файла в документ по заказу (orders_doc_add_file) ТЗ 4.8.6
+--*********************************************************************************************************************  
+function AddFileToDocument (pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту    
+                            pDocId documents.dcmt_id%type,    -- идентификатор документа
+                            pFileBody doc_stores.doc_data%type, -- содержимое файла для загрузки
+                            pFileName doc_stores.file_name%type      -- имя файла
+                            ) return integer;
+                                 
+--********************************************************************************************************************* 
+
+
+-- Получение файла в документ по заказу (orders_doc_getfile) ТЗ 4.8.7
+--********************************************************************************************************************* 
+procedure GetFile(pClntId in clients_dic.clnt_id%type,    -- принадлежность документа Клиенту
+                  pFileId in doc_stores.dstr_id%type,     -- идентификатор выгружаемого файла
+                  pFileBody out doc_stores.doc_data%type, -- содержимое выгружаемого файла
+                  pFileName out doc_stores.file_name%type  -- имя файла
+                  ) ;
+                  
+--*********************************************************************************************************************                    
            
   -- Функия проверки принадлежености заказа Клиенту, которому принадлежит текущий пользователь портала для Клиентов          
   function CheckOwnerOrder(pId t_orders.ord_id%type,
@@ -220,40 +289,6 @@ function fn_orders_docs(
                       ) 
                       return tbl_docs pipelined --parallel_enable
                       ;
-function CreateDocument(pOrdId t_orders.ord_id%type,   -- принадлежность документа заказу
-                        pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту
-                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
-                        pDocnumber documents.doc_number%type default null, -- номер документа
-                        pDocDate documents.doc_date%type default sysdate, -- дата документа
-                        pTheme documents.theme%type default null,  -- тема документа
-                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
-                        pAuthor documents.author%type default null -- автор документа
-                        ) return number;
-function UpdateDocument(pClntId clients_dic.clnt_id%type,     -- принадлежность документа клиенту, 
-                        pDocId documents.dcmt_id%type,        -- Идентификатор документа
-                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
-                        pDocnumber documents.doc_number%type default null, -- номер документа
-                        pDocDate documents.doc_date%type default sysdate, -- дата документа
-                        pTheme documents.theme%type default null,  -- тема документа
-                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
-                        pAuthor documents.author%type default null -- автор документа
-                        ) return boolean;
--- Удаление документа                         
-function RemoveDocument(pClntId clients_dic.clnt_id%type,  -- принадлежность документа клиенту
-                         pDocId documents.dcmt_id%type      -- идентификатор документа
-                        ) return boolean;
--- Добавление файла в документ по заказу
-function AddFileToDocument(pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту    
-                  pDocId documents.dcmt_id%type,    -- идентификатор документа
-                  pFileBody doc_stores.doc_data%type, -- содержимое файла для загрузки
-                  pFileName doc_stores.file_name%type      -- имя файла
-                  ) return integer;
-
-procedure GetFile(pClntId in clients_dic.clnt_id%type,    -- принадлежность документа Клиенту
-                  pFileId in doc_stores.dstr_id%type,     -- идентификатор выгружаемого файла
-                  pFileBody out doc_stores.doc_data%type, -- содержимое выгружаемого файла
-                  pFileName out doc_stores.file_name%type  -- имя файла
-                 );
 
 
 
@@ -1125,6 +1160,8 @@ create or replace package body MCSF_API is
    
    lQueryWhere := '
                  d.doc_state = 0
+                 and d.del_user is null
+                 and d.del_date is null
                  and dl.dcmt_dcmt_id = d.dcmt_id
                  and o.ord_id = dl.ord_ord_id
                  and clrq.ord_ord_id = o.ord_id
@@ -1183,6 +1220,339 @@ create or replace package body MCSF_API is
 
 --*********************************************************************************************************************
 
+
+-- Выдача списка документов (orders_docs) ТЗ 4.8.1
+--*********************************************************************************************************************
+function GetDocument(pClntId clients_dic.clnt_id%type,
+                     pId documents.dcmt_id%type) return t_mcsf_api_order_doc is
+
+   lCursor sys_refcursor;
+   
+   lRow    t_mcsf_api_order_doc := null;
+   lRowRec mcsf_api_helper.t_mcsf_api_order_doc_rec;
+   lRowFiles tbl_mcsf_api_order_doc_files;
+
+begin
+   
+   open lCursor for select d.dcmt_id id, 
+                      dl.ord_ord_id order_id,
+                      d.dctp_dctp_id type_id,
+                      dt.def doc_type,
+                      d.doc_date doc_date,
+                      d.navi_date uploaded_at,
+                      d.navi_user owner 
+                 from documents d, doc_links dl, doc_types dt,t_orders o, clrq_orders clrq, client_requests cl
+                where d.dcmt_id = pId and
+                      d.doc_state = 0 and
+                      d.del_user is null and
+                      d.del_date is null and
+                      dl.dcmt_dcmt_id = d.dcmt_id and
+                      o.ord_id = dl.ord_ord_id and
+                      clrq.ord_ord_id = o.ord_id and
+                      cl.clrq_id = clrq.clrq_clrq_id and
+                      cl.clnt_clnt_id = pClntId and
+                      dt.dctp_id = d.dctp_dctp_id;
+ 
+   loop 
+     fetch lCursor into lRowRec; 
+     
+     exit when lCursor%notfound;
+     
+     select mcsf_api_helper.GetDocFiles(lRowRec.id) into lRowFiles from dual;
+     
+     lRow := t_mcsf_api_order_doc(
+          lRowRec.id, 
+          lRowRec.order_id, 
+          lRowRec.type_id, 
+          lRowRec.doc_type, 
+          lRowRec.doc_date, 
+          lRowRec.uploaded_at, 
+          lRowRec.owner,
+          lRowFiles
+     ); 
+     
+   end loop;
+   
+   close lCursor;
+   
+   return lRow;
+         
+end;
+
+--*********************************************************************************************************************
+
+
+-- Создание документа (orders_doc_create) ТЗ 4.8.1
+--*********************************************************************************************************************
+function CreateDocument(pOrdId t_orders.ord_id%type,   -- принадлежность документа заказу
+                        pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту
+                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
+                        pDocnumber documents.doc_number%type default null, -- номер документа
+                        pDocDate documents.doc_date%type default sysdate, -- дата документа
+                        pTheme documents.theme%type default null,  -- тема документа
+                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
+                        pAuthor documents.author%type default null -- автор документа
+                        ) return number is
+                        
+lDocId documents.dcmt_id%type;
+lHoldId holding_dic.hold_id%type;       
+                 
+begin
+  -- проверка принадлежности заказа Клиенту, которого представляет текущий пользователь портала
+  
+  if mcsf_api_helper.CheckOwnerOrder(pOrdId,pClntId) then
+     
+     begin
+         
+         select dcmt_seq.nextval into lDocId from dual;
+         
+         -- Принадлежность клиента Холдингу
+         select cl.hold_hold_id
+           into lHoldId
+           from clients_dic cl
+          where cl.clnt_id = pClntId;
+          
+         -- Регистрация документа 
+         insert into documents
+               (dcmt_id,doc_number,doc_date,dctp_dctp_id,theme,shrt_content,
+                author,navi_user,navi_date,doc_state,hold_hold_id)
+         values(lDocId,pDocnumber,pDocDate,pDctpId,pTheme,pShortContent,
+                pAuthor,user,sysdate,0,lHoldId);
+                
+         -- фиксация связи документа с заказом
+         insert into doc_links
+                (dcln_id,dcmt_dcmt_id,ord_ord_id,navi_user,navi_date)
+          values(dcln_seq.nextval,lDocId,pOrdId,user,sysdate);
+          
+         commit;
+         
+         return lDocId;
+     
+     exception
+        when no_data_found then
+          return -1;
+         
+     end; 
+                
+  else
+    
+     return -1;
+     
+  end if;  
+       
+end;
+
+--*********************************************************************************************************************
+
+
+-- Обновление документа (orders_doc_create) ТЗ 4.8.2
+--*********************************************************************************************************************
+function UpdateDocument(pClntId clients_dic.clnt_id%type,     -- принадлежность документа клиенту, 
+                        pDocId documents.dcmt_id%type,        -- Идентификатор документа
+                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
+                        pDocnumber documents.doc_number%type default null, -- номер документа
+                        pDocDate documents.doc_date%type default sysdate, -- дата документа
+                        pTheme documents.theme%type default null,  -- тема документа
+                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
+                        pAuthor documents.author%type default null -- автор документа
+                        ) return boolean is
+                        
+ lHoldId holding_dic.hold_id%type;  
+ v_errm varchar2(2000); 
+ lOrdId t_orders.ord_id%type;
+                       
+begin
+         -- Какому заказу принадлежит документ
+         select dl.ord_ord_id
+           into lOrdId
+           from doc_links dl
+         where dl.dcmt_dcmt_id = pDocId;  
+         
+         if mcsf_api_helper.CheckOwnerOrder(lOrdId, pClntId) then
+           
+            begin
+               -- Принадлежность клиента Холдингу
+               select cl.hold_hold_id
+                 into lHoldId
+                 from clients_dic cl
+                where cl.clnt_id = pClntId;
+                
+               -- Обновление документа 
+               update documents d
+                  set d.doc_number = pDocnumber,
+                      d.doc_date = pDocDate,
+                      d.dctp_dctp_id = pDctpId,
+                      d.theme = pTheme,
+                      d.shrt_content = pShortContent,
+                      d.author = pAuthor,
+                      d.navi_user = user,
+                      d.navi_date = sysdate,
+                      d.hold_hold_id = lHoldId
+                where d.dcmt_id = pDocId and
+                      d.del_user is null and
+                      d.del_date is null;
+                
+               commit;
+               
+               return true;
+            end;
+            
+         else   
+            -- Документ по заказу не принадлежит заданному Клиенту   
+            return false;
+            
+         end if;  
+          
+exception
+  when others then
+    begin
+      v_errm := SQLERRM;
+      insert into sys_logs (slog_id,msg,log_date,appl_appl_id,apmt_apmt_id) values(slog_seq.nextval,v_errm,sysdate,20,1);
+      commit;       
+      return false;
+    end;
+             
+end;                         
+
+--********************************************************************************************************************* 
+
+
+-- Удаление документа (orders_doc_delete) ТЗ 4.8.4
+--*********************************************************************************************************************                       
+function RemoveDocument(pClntId clients_dic.clnt_id%type,  -- принадлежность документа клиенту
+                        pDocId documents.dcmt_id%type      -- идентификатор документа
+                        ) return boolean is
+                        
+ v_errm varchar2(2000); 
+ lOrdId t_orders.ord_id%type;
+ 
+begin
+  
+    -- Какому заказу принадлежит документ
+    select dl.ord_ord_id
+      into lOrdId
+      from doc_links dl
+     where dl.dcmt_dcmt_id = pDocId;
+       
+    if mcsf_api_helper.CheckOwnerOrder(lOrdId, pClntId) then
+       
+       begin
+         
+         -- Логическое удаление
+         update documents d
+            set d.del_user = user,
+                d.del_date = sysdate
+          where d.dcmt_id = pDocId;
+          
+         commit;
+         
+         return true;     
+             
+       end;
+       
+    else
+      
+      return false;
+      
+    end if; 
+    
+exception
+  when others then
+    begin
+      v_errm := SQLERRM;
+      insert into sys_logs (slog_id,msg,log_date,appl_appl_id,apmt_apmt_id) values(slog_seq.nextval,v_errm,sysdate,20,1);
+      commit;       
+      return false;
+    end; 
+                    
+end;
+
+--********************************************************************************************************************* 
+
+
+-- Добавление файла в документ по заказу (orders_doc_addfile) ТЗ 4.8.6
+--*********************************************************************************************************************  
+function AddFileToDocument (pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту    
+                            pDocId documents.dcmt_id%type,    -- идентификатор документа
+                            pFileBody doc_stores.doc_data%type, -- содержимое файла для загрузки
+                            pFileName doc_stores.file_name%type      -- имя файла
+                            ) return integer is
+                            
+lFileId doc_stores.dstr_id%type;
+
+v_errm varchar2(2000); 
+lOrdId t_orders.ord_id%type;     
+             
+begin
+  
+  -- Какому заказу принадлежит документ
+  select dl.ord_ord_id
+    into lOrdId
+    from doc_links dl
+   where dl.dcmt_dcmt_id = pDocId;
+   
+  if mcsf_api_helper.CheckOwnerOrder(lOrdId, pClntId) then
+  
+    select dstr_seq.nextval into lFileId from dual;
+    
+    insert into doc_stores (dstr_id, dcmt_dcmt_id,file_name, doc_data,navi_user,navi_date)
+    values(lFileId,pDocId,pFileName,pFileBody,user,sysdate);
+     
+    return lFileId;
+   
+  end if;
+  
+  return -1;
+   
+exception
+   when others then
+      v_errm := SQLERRM;
+      insert into sys_logs (slog_id,msg,log_date,appl_appl_id,apmt_apmt_id) values(slog_seq.nextval,v_errm,sysdate,20,1);
+      commit;
+      return -1;   
+end;
+
+--*********************************************************************************************************************
+
+
+-- Получение файла в документ по заказу (orders_doc_getfile) ТЗ 4.8.7
+--********************************************************************************************************************* 
+procedure GetFile(pClntId in clients_dic.clnt_id%type,    -- принадлежность документа Клиенту
+                  pFileId in doc_stores.dstr_id%type,     -- идентификатор выгружаемого файла
+                  pFileBody out doc_stores.doc_data%type, -- содержимое выгружаемого файла
+                  pFileName out doc_stores.file_name%type  -- имя файла
+                  ) is
+                  
+  lOrdId t_orders.ord_id%type; 
+   
+begin
+  
+  -- Какому заказу принадлежит документ
+  select dl.ord_ord_id
+    into lOrdId
+    from doc_links dl
+   where dl.dcmt_dcmt_id = (select ds.dcmt_dcmt_id from doc_stores ds where ds.dstr_id = pFileId);
+   
+  if mcsf_api_helper.CheckOwnerOrder(lOrdId, pClntId) then
+  
+    pFileBody := documents_api.Get_Documents_Data(pFileId);
+   
+   select ds.file_name 
+     into pFileName
+     from doc_stores ds
+    where ds.dstr_id = pFileId;
+   
+  end if;
+  
+exception
+  when others then
+    begin
+      pFileBody := null;
+      pFilename := null;
+    end;    
+end; 
+
+--*********************************************************************************************************************    
 
 ----------------------------------------------------------
 -- Функция возврата справочника стран
@@ -1315,175 +1685,7 @@ begin
      end loop;
      close cur;
      return;       
-end fn_orders_docs;
-
---- Создание документа 
-function CreateDocument(pOrdId t_orders.ord_id%type,   -- принадлежность документа заказу
-                        pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту
-                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
-                        pDocnumber documents.doc_number%type default null, -- номер документа
-                        pDocDate documents.doc_date%type default sysdate, -- дата документа
-                        pTheme documents.theme%type default null,  -- тема документа
-                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
-                        pAuthor documents.author%type default null -- автор документа
-                        ) return number is
-DocId documents.dcmt_id%type;
-pHoldId holding_dic.hold_id%type;                        
-begin
-  -- проверка принадлежности заказа Клиенту, которого представляет текущий пользователь портала
-  if CheckOwnerOrder(pOrdId,pClntId) then
-     begin
-         select dcmt_seq.nextval into DocId from dual;
-         -- Принадлежность клиента Холдингу
-         select cl.hold_hold_id
-           into pHoldId
-           from clients_dic cl
-          where cl.clnt_id = pClntId;
-         -- Регистрация документа 
-         insert into documents
-               (dcmt_id,doc_number,doc_date,dctp_dctp_id,theme,shrt_content,
-                author,navi_user,navi_date,doc_state,hold_hold_id)
-         values(DocId,pDocnumber,pDocDate,pDctpId,pTheme,pShortContent,
-                pAuthor,user,sysdate,0,pHoldId);
-         -- фиксация связи документа с заказом
-         insert into doc_links
-                (dcln_id,dcmt_dcmt_id,ord_ord_id,navi_user,navi_date)
-          values(dcln_seq.nextval,DocId,pOrdId,user,sysdate);
-         commit;
-         return DocId;
-     end;            
-  else
-     return -1;
-  end if;       
-end;                        
-
--- Обновление данных документа
-function UpdateDocument(pClntId clients_dic.clnt_id%type,     -- принадлежность документа клиенту, 
-                        pDocId documents.dcmt_id%type,        -- Идентификатор документа
-                        pDctpId doc_types_dic.dctp_id%type, -- тип документа
-                        pDocnumber documents.doc_number%type default null, -- номер документа
-                        pDocDate documents.doc_date%type default sysdate, -- дата документа
-                        pTheme documents.theme%type default null,  -- тема документа
-                        pShortContent documents.shrt_content%type default null, -- краткое описание документа (примечание) 
-                        pAuthor documents.author%type default null -- автор документа
-                        ) return boolean is
- pHoldId holding_dic.hold_id%type;  
- v_errm varchar2(2000); 
- pOrdId t_orders.ord_id%type;                      
-begin
-         -- Какому заказу принадлежит документ
-         select dl.ord_ord_id
-           into pOrdId
-           from doc_links dl
-         where dl.dcmt_dcmt_id = pDocId;  
-         if CheckOwnerOrder(pOrdId,pClntId) then
-            begin
-               -- Принадлежность клиента Холдингу
-               select cl.hold_hold_id
-                 into pHoldId
-                 from clients_dic cl
-                where cl.clnt_id = pClntId;
-               -- Обновление документа 
-               update documents d
-                  set d.doc_number = pDocnumber,
-                      d.doc_date = pDocDate,
-                      d.dctp_dctp_id = pDctpId,
-                      d.theme = pTheme,
-                      d.shrt_content = pShortContent,
-                      d.author = pAuthor,
-                      d.navi_user = user,
-                      d.navi_date = sysdate,
-                      d.hold_hold_id = pHoldId
-                where d.dcmt_id = pDocId;
-               commit;
-               return true;
-            end;
-         else   
-            -- Документ по заказу не принадлежит заданному Клиенту   
-            return false;
-         end if;   
-exception
-  when others then
-    begin
-      v_errm := SQLERRM;
-      insert into sys_logs (slog_id,msg,log_date,appl_appl_id,apmt_apmt_id)
-             values(slog_seq.nextval,v_errm,sysdate,20,1);
-      commit;       
-      return false;
-    end;          
-end; 
-
--- Удаление документа                         
-function RemoveDocument(pClntId clients_dic.clnt_id%type,  -- принадлежность документа клиенту
-                         pDocId documents.dcmt_id%type      -- идентификатор документа
-                        ) return boolean is
- v_errm varchar2(2000); 
- pOrdId t_orders.ord_id%type;
-begin
-    -- Какому заказу принадлежит документ
-    select dl.ord_ord_id
-      into pOrdId
-      from doc_links dl
-     where dl.dcmt_dcmt_id = pDocId;  
-    if CheckOwnerOrder(pOrdId,pClntId) then
-       begin
-         update documents d
-            set d.del_user = user,
-                d.del_date = sysdate
-          where d.dcmt_id = pDocId;
-         commit;
-         return true;         
-       end;
-    else
-      return false;
-    end if; 
-exception
-  when others then
-    begin
-      v_errm := SQLERRM;
-      insert into sys_logs (slog_id,msg,log_date,appl_appl_id,apmt_apmt_id)
-             values(slog_seq.nextval,v_errm,sysdate,20,1);
-      commit;       
-      return false;
-    end;                 
-end;
-
--- Добавление файла в документ по заказу
-function AddFileToDocument (pClntId clients_dic.clnt_id%type, -- принадлежность документа клиенту    
-                  pDocId documents.dcmt_id%type,    -- идентификатор документа
-                  pFileBody doc_stores.doc_data%type, -- содержимое файла для загрузки
-                  pFileName doc_stores.file_name%type      -- имя файла
-                  ) return integer is
-FileId doc_stores.dstr_id%type;                  
-begin
-   select dstr_seq.nextval into FileId from dual;
-   insert into doc_stores
-          (dstr_id, dcmt_dcmt_id,file_name, doc_data,navi_user,navi_date)
-     values(FileId,pDocId,pFileName,pFileBody,user,sysdate);
-   return FileId;
-exception
-   when others then
-     return -1;   
-end;   
-
-procedure GetFile(pClntId in clients_dic.clnt_id%type,    -- принадлежность документа Клиенту
-                  pFileId in doc_stores.dstr_id%type,     -- идентификатор выгружаемого файла
-                  pFileBody out doc_stores.doc_data%type, -- содержимое выгружаемого файла
-                  pFileName out doc_stores.file_name%type  -- имя файла
-                  ) is
-begin
-   pFileBody := documents_api.Get_Documents_Data(pFileId);
-   select ds.file_name 
-     into pFileName
-     from doc_stores ds
-    where ds.dstr_id = pFileId; 
-exception
-  when others then
-    begin
-      pFileBody := null;
-      pFilename := null;
-    end;    
-end;                  
+end fn_orders_docs;                  
 
 -- Функция выдачи данных по компании                            
 function fn_company_get(pClntId clients_dic.clnt_id%type)

@@ -33,6 +33,11 @@ create or replace package MCSF_API_HELPER is
   Возвращает список id заказов для инфойса
   */
   function GetInvoiceOrderIds(pInvoiceId invoices.invc_id%type) return tbl_mcsf_api_order_ids pipelined parallel_enable;
+  
+  /*
+  Проверяет принадлежность заказа клиенту
+  */
+  function CheckOwnerOrder(pId t_orders.ord_id%type, pClntId clients_dic.clnt_id%type) return boolean;
 
 end MCSF_API_HELPER;
 /
@@ -76,6 +81,33 @@ create or replace package body MCSF_API_HELPER is
       pipe row(lCursor.ord_ord_id);
      
     end loop;
+  end;
+  
+  /*
+  Проверяет принадлежность заказа клиенту
+  */
+  function CheckOwnerOrder(pId t_orders.ord_id%type, pClntId clients_dic.clnt_id%type) return boolean is
+    
+    ClntRqstId client_requests.clnt_clnt_id%type;
+    
+  begin
+    
+    select cl.clnt_clnt_id
+      into ClntRqstId
+      from client_requests cl, clrq_orders co
+     where co.ord_ord_id = pId
+       and cl.clrq_id = co.clrq_clrq_id;
+    
+    if ClntRqstId = pClntId then
+      return true;
+    else
+      return false;
+    end if;
+    
+  exception
+    when no_data_found then
+      return false;
+      
   end;
   
 end MCSF_API_HELPER;
