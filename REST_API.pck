@@ -860,7 +860,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('te_number', null, lFilter); -- Номер ТЕ (с индексом)
       
-      rest_api_helper.AddFilter('te_info', null, lFilter); -- Номер ТЕ (с индексом)
+      rest_api_helper.AddFilter('te_type', null, lFilter); -- Номер ТЕ (с индексом)
       
       rest_api_helper.AddFilter('unload_transhipment_plan_date', null, lFilter); -- Дата подхода в порт перевалки
       
@@ -892,7 +892,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('place_from', null, lFilter); -- Адрес отправки 
       
-      rest_api_helper.AddFilter('place_to', null, lFilter); -- Адрес назначения      
+      rest_api_helper.AddFilter('place_to', null, lFilter); -- Адрес назначения
+      
+      rest_api_helper.AddFilter('consignor', null, lFilter); -- Адрес отправки 
+      
+      rest_api_helper.AddFilter('consignee', null, lFilter); -- Адрес назначения       
       
       lQueryFilter := replace(apex_json.get_varchar2('data.query', null), '''', '"');
     
@@ -961,7 +965,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c011            => to_char(lRc.created_at,PkgDefaultDateFormat),
                                      p_c012            => to_char(lRc.date_from,PkgDefaultDateFormat),
                                      p_c013            => to_char(lRc.date_to,PkgDefaultDateFormat),
-                                     p_c014            => lRc.te_info,
+                                     p_c014            => lRc.te_type,
                                      p_c015            => lRc.port_svh,
                                      p_c016            => lRc.departure_country,
                                      p_c017            => to_char(lRc.date_closed,PkgDefaultDateFormat),
@@ -976,7 +980,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c026            => to_char(lRc.date_return_empty,PkgDefaultDateFormat),
                                      p_c027            => to_char(lRc.customer_delivery_date,PkgDefaultDateFormat),
                                      p_c028            => lRc.am_number,
-                                     p_c029            => lRc.fio_driver
+                                     p_c029            => lRc.fio_driver,
+                                     p_c030            => lRc.consignor,
+                                     p_c031            => lRc.consignee
                                      );
         end loop;
       
@@ -1000,7 +1006,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c011 "created_at",
                          c.c012 "date_from",
                          c.c013 "date_to",
-                         c.c014 "te_info",
+                         c.c014 "te_type",
                          c.c015 "port_svh",
                          c.c016 "departure_country",
                          c.c017 "date_closed",
@@ -1015,7 +1021,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c026 "date_return_empty",
                          c.c027 "customer_delivery_date",
                          c.c028 "am_number",
-                         c.c029 "fio_driver"
+                         c.c029 "fio_driver",
+                         c.c030 "consignor",
+                         c.c031 "consignee"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1039,7 +1047,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('created_at', lRc."created_at", true);
         apex_json.write('date_from', lRc."date_from", true);
         apex_json.write('date_to', lRc."date_to", true);
-        apex_json.write('te_info', lRc."te_info", true);
+        apex_json.write('te_type', lRc."te_type", true);
         apex_json.write('port_svh', lRc."port_svh", true);
         apex_json.write('departure_country', lRc."departure_country", true);
         apex_json.write('shipment_date', lRc."shipment_date", true);
@@ -1054,6 +1062,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('customer_delivery_date', lRc."customer_delivery_date", true);
         apex_json.write('am_number', lRc."am_number", true);
         apex_json.write('fio_driver', lRc."fio_driver", true);
+        apex_json.write('consignor', lRc."consignor", true);
+        apex_json.write('consignee', lRc."consignee", true);
       
         apex_json.close_object;
       

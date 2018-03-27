@@ -37,7 +37,7 @@ create or replace package MCSF_API is
    created_at          client_requests.ord_date%type,          -- Дата создания заказа
    date_from           t_loading_places.source_date_plan%type, -- Дата отправки заказа
    date_to             t_loading_places.source_date_plan%type, -- Дата прибытия заказа
-   te_info             varchar2(500),                          -- Номер и тип ТЕ
+   te_type             varchar2(500),                          -- Номер и тип ТЕ
    port_svh            ports.def%type,                         -- Порт СВХ
    departure_country       countries.def%type,                 -- Страна происхождения груза
    shipment_date       konosaments.pol_date%type,              -- Дата погрузки судна
@@ -49,9 +49,11 @@ create or replace package MCSF_API is
    dt_number                          gtds.gtd_number%type, -- Номер ДТ
    date_export_port                          order_ways.date_out%type, -- Дата вывоза из порта
    date_return_empty                         order_ways.date_plan%type, -- Дата возврата порожнего
-   customer_delivery_date                  order_ways.date_plan%type, -- Дата выгрузки на склад - полагаю, что это дата доставки к клиенту ( в СиМобайл "дата прибытия в пункт назначения")
+   customer_delivery_date                    order_ways.date_plan%type, -- Дата выгрузки на склад - полагаю, что это дата доставки к клиенту ( в СиМобайл "дата прибытия в пункт назначения")
    am_number                                 cars.state_number%type, -- Номер АМ
-   fio_driver                                cmrs.driver_name%type -- ФИО водителя
+   fio_driver                                cmrs.driver_name%type, -- ФИО водителя
+   consignor                                 clients.client_name%type,             -- Грузоотправитель (Контрагент)
+   consignee                                 clients.client_name%type             -- Грузополучатель (Контрагент)
   );
   type tbl_orders is table of t_order_record;
 
@@ -595,7 +597,7 @@ create or replace package body MCSF_API is
    lColsArr('created_at') := 'cl.ord_date'; -- Дата создания заказа
    lColsArr('date_from') := 'lp.source_date_plan'; -- Дата отправки заказа
    lColsArr('date_to') := 'dp.source_date_plan'; -- Дата прибытия заказа
-   lColsArr('te_info') := '(case when con.cont_number is Null then null else con.cont_index || con.cont_number || '' (''||ctp.def||'')''end )'; -- Номер и тип ТЕ
+   lColsArr('te_type') := '(case when con.cont_number is Null then null else con.cont_index || con.cont_number || '' (''||ctp.def||'')''end )'; -- Номер и тип ТЕ
    lColsArr('port_svh') := 'mcsf_api.GetPOD_ord(o.ord_id)'; -- Порт СВХ
    lColsArr('departure_country') := 'cou_lp.def'; -- Страна отправления груза
    lColsArr('shipment_date') := '(select distinct first_value(k.pol_date) over (order by k.knsm_date asc) 
@@ -620,6 +622,9 @@ create or replace package body MCSF_API is
    
    lColsArr('am_number') := 'car.state_number'; -- Номер АМ
    lColsArr('fio_driver') := 'c.driver_name'; -- ФИО водителя
+   
+   lColsArr('consignor') := 'cl_lp.client_name'; -- Грузоотправитель (Контрагент)
+   lColsArr('consignee') := 'cl_dp.client_name'; -- Грузополучатель (Контрагент)
                                         
    lQueryCols := lColsArr('id') || ' id, ' ||
                  lColsArr('place_from') || ' place_from, ' ||
@@ -635,7 +640,7 @@ create or replace package body MCSF_API is
                  lColsArr('created_at') || ' created_at, ' ||
                  lColsArr('date_from') || ' date_from, ' ||
                  lColsArr('date_to') || ' date_to, ' ||
-                 lColsArr('te_info') || ' te_info, ' ||
+                 lColsArr('te_type') || ' te_type, ' ||
                  lColsArr('port_svh') || ' port_svh, ' ||
                  lColsArr('departure_country') || ' departure_country, ' ||
                  lColsArr('shipment_date') || ' shipment_date, ' ||
@@ -649,7 +654,9 @@ create or replace package body MCSF_API is
                  lColsArr('date_return_empty') || ' date_return_empty, ' ||
                  lColsArr('customer_delivery_date') || ' customer_delivery_date, ' ||
                  lColsArr('am_number') || ' am_number, ' ||
-                 lColsArr('fio_driver') || ' fio_driver ';
+                 lColsArr('fio_driver') || ' fio_driver, ' ||
+                 lColsArr('consignor') || ' consignor, ' ||
+                 lColsArr('consignee') || ' consignee ';
    
    lQueryFrom := 't_orders o, 
                   clrq_orders co, 
@@ -675,7 +682,9 @@ create or replace package body MCSF_API is
                   gtds g,
                   cmrs c,
                   cars car,
-                  vcmrs_last cmrl
+                  vcmrs_last cmrl,
+                  clients cl_lp,
+                  clients cl_dp
                   ';
                   
    lQueryWhere := 'cl.clnt_clnt_id   = :pClntId 
@@ -693,6 +702,7 @@ create or replace package body MCSF_API is
                   and lp.ldpl_type(+)   = 0
                   and lp.del_date(+) is Null
                   and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
+                  and lp.source_clnt_id = cl_lp.clnt_id(+)
                   and lp.city_city_id   = cit_lp.city_id(+)
                   and cit_lp.cou_cou_id = cou_lp.cou_id(+)
                   -- Грузополучатель
@@ -700,6 +710,7 @@ create or replace package body MCSF_API is
                   and dp.source_type(+) = 0
                   and dp.ldpl_type(+)   = 1
                   and dp.del_date(+) is Null
+                  and dp.source_clnt_id = cl_dp.clnt_id(+)
                   and dp.city_city_id   = cit_dp.city_id(+)
                   and cit_dp.cou_cou_id = cou_dp.cou_id(+)
                   and o.ord_id          = oc.ord_id(+)
@@ -737,7 +748,7 @@ create or replace package body MCSF_API is
                'to_char(' || lColsArr('created_at') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_from') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_to') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
-               lColsArr('te_info') || ' || '' '' || ' ||
+               lColsArr('te_type') || ' || '' '' || ' ||
                lColsArr('port_svh') || ' || '' '' || ' ||
                lColsArr('departure_country') || ' || '' '' || ' ||
                'to_char(' || lColsArr('shipment_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
