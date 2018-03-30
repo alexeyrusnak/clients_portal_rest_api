@@ -11,4 +11,6 @@ grant execute on tbl_mcsf_api_invoices to rest;
 
 grant execute on t_mcsf_api_delivery_car to rest;
 
+grant execute on t_mcsf_api_contractor_short to rest;
+
 grant execute on mcsf_api_helper to rest;

@@ -33,7 +33,6 @@ create or replace package MCSF_API is
    amount              number(15,2),                           -- Оплаченная сумма
    notification_count  number(15,2),                           -- Кол-во уведомлений 
    cargo_name          freights.def%type,                      -- Наименование груза
-   contractor          clients.client_name%type,               -- Наименование грузоотправителя
    created_at          client_requests.ord_date%type,          -- Дата создания заказа
    date_from           t_loading_places.source_date_plan%type, -- Дата отправки заказа
    date_to             t_loading_places.source_date_plan%type, -- Дата прибытия заказа
@@ -52,8 +51,10 @@ create or replace package MCSF_API is
    customer_delivery_date                    order_ways.date_plan%type, -- Дата выгрузки на склад - полагаю, что это дата доставки к клиенту ( в СиМобайл "дата прибытия в пункт назначения")
    am_number                                 cars.state_number%type, -- Номер АМ
    fio_driver                                cmrs.driver_name%type, -- ФИО водителя
-   consignor                                 clients.client_name%type,             -- Грузоотправитель (Контрагент)
-   consignee                                 clients.client_name%type             -- Грузополучатель (Контрагент)
+   "consignor.id"                            clients.clnt_id%type,
+   "consignor.name"                          clients.client_name%type,             -- Грузоотправитель (Контрагент)
+   "consignee.id"                            clients.clnt_id%type,
+   "consignee.name"                          clients.client_name%type             -- Грузополучатель (Контрагент)
   );
   type tbl_orders is table of t_order_record;
 
@@ -88,8 +89,8 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
 
  type t_order_extended_record is record (
    id                  t_orders.ord_id%type,                 -- Идентификатор заказа
-   consignor           clients.client_name%type,             -- Грузоотправитель (Контрагент)
-   consignee           clients.client_name%type,             -- Грузополучатель (Контрагент)
+   consignor           t_mcsf_api_contractor_short,             -- Грузоотправитель (Контрагент)
+   consignee           t_mcsf_api_contractor_short,             -- Грузополучатель (Контрагент)
    created_at          client_requests.ord_date%type,        -- Дата создания заказа
    date_closed         t_orders.complete_date%type,          -- Дата завершения заказа
    -- status              order_statuses.def%type,              -- Cтатус заказа
@@ -593,7 +594,6 @@ create or replace package body MCSF_API is
                                                t.message_text not in (''NOT'',''message_text'')
                                        )'; -- Кол-во уведомлений
    lColsArr('cargo_name') := 'fr.def'; -- Наименование груза
-   lColsArr('contractor') := 'cl_otpr_o.client_name'; -- Наименование грузоотправителя
    lColsArr('created_at') := 'cl.ord_date'; -- Дата создания заказа
    lColsArr('date_from') := 'lp.source_date_plan'; -- Дата отправки заказа
    lColsArr('date_to') := 'dp.source_date_plan'; -- Дата прибытия заказа
@@ -623,8 +623,11 @@ create or replace package body MCSF_API is
    lColsArr('am_number') := 'car.state_number'; -- Номер АМ
    lColsArr('fio_driver') := 'c.driver_name'; -- ФИО водителя
    
-   lColsArr('consignor') := 'cl_lp.client_name'; -- Грузоотправитель (Контрагент)
-   lColsArr('consignee') := 'cl_dp.client_name'; -- Грузополучатель (Контрагент)
+   lColsArr('consignor.id') := 'cl_lp.clnt_id';
+   lColsArr('consignor.name') := 'cl_lp.client_name'; -- Грузоотправитель (Контрагент)
+   
+   lColsArr('consignee.id') := 'cl_dp.clnt_id';
+   lColsArr('consignee.name') := 'cl_dp.client_name'; -- Грузополучатель (Контрагент)
                                         
    lQueryCols := lColsArr('id') || ' id, ' ||
                  lColsArr('place_from') || ' place_from, ' ||
@@ -636,7 +639,6 @@ create or replace package body MCSF_API is
                  lColsArr('amount') || ' amount, ' ||
                  lColsArr('notification_count') || ' notification_count, ' ||
                  lColsArr('cargo_name') || ' cargo_name, ' ||
-                 lColsArr('contractor') || ' contractor, ' ||
                  lColsArr('created_at') || ' created_at, ' ||
                  lColsArr('date_from') || ' date_from, ' ||
                  lColsArr('date_to') || ' date_to, ' ||
@@ -655,8 +657,10 @@ create or replace package body MCSF_API is
                  lColsArr('customer_delivery_date') || ' customer_delivery_date, ' ||
                  lColsArr('am_number') || ' am_number, ' ||
                  lColsArr('fio_driver') || ' fio_driver, ' ||
-                 lColsArr('consignor') || ' consignor, ' ||
-                 lColsArr('consignee') || ' consignee ';
+                 lColsArr('consignor.id') || ' "consignor.id", ' ||
+                 lColsArr('consignor.name') || ' "consignor.name", ' ||
+                 lColsArr('consignee.id') || ' "consignee.id", ' ||
+                 lColsArr('consignee.name') || ' "consignee.name" ';
    
    lQueryFrom := 't_orders o, 
                   clrq_orders co, 
@@ -671,7 +675,6 @@ create or replace package body MCSF_API is
                   cities cit_lp,
                   countries cou_dp,
                   countries cou_lp,
-                  clients cl_otpr_o,
                   conteiner_types ctp,
                   order_statuses ost,
                   order_cnsm_mv oc,  -- данные по стране прибытия
@@ -701,7 +704,6 @@ create or replace package body MCSF_API is
                   and lp.source_type(+) = 0
                   and lp.ldpl_type(+)   = 0
                   and lp.del_date(+) is Null
-                  and lp.source_clnt_id = cl_otpr_o.clnt_id(+)
                   and lp.source_clnt_id = cl_lp.clnt_id(+)
                   and lp.city_city_id   = cit_lp.city_id(+)
                   and cit_lp.cou_cou_id = cou_lp.cou_id(+)
@@ -744,7 +746,6 @@ create or replace package body MCSF_API is
                lColsArr('amount') || ' || '' '' || ' ||
                lColsArr('notification_count') || ' || '' '' || ' ||
                lColsArr('cargo_name') || ' || '' '' || ' ||
-               lColsArr('contractor') || ' || '' '' || ' ||
                'to_char(' || lColsArr('created_at') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_from') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_to') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
@@ -761,6 +762,10 @@ create or replace package body MCSF_API is
                'to_char(' || lColsArr('date_export_port') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_return_empty') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('customer_delivery_date') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               lColsArr('consignor.id') || ' || '' '' || ' ||
+               lColsArr('consignor.name') || ' || '' '' || ' ||
+               lColsArr('consignee.id') || ' || '' '' || ' ||
+               lColsArr('consignee.name') || ' || '' '' || ' ||
                lColsArr('am_number') || ' || '' '' || ' ||
                lColsArr('fio_driver') || '
              ) like lower(''%' || pQueryFilter || '%'')';
@@ -802,9 +807,11 @@ create or replace package body MCSF_API is
   i integer;
  begin
     for cur in (
-      select o.ord_id id,-- Идентификатор заказа  
-             cl_lp.client_name consignor,-- Грузоотправитель (Контрагент)        
-             cl_dp.client_name consignee,-- Грузополучатель (Контрагент)        
+      select o.ord_id id,-- Идентификатор заказа
+             cl_lp.clnt_id "consignor.id",  
+             cl_lp.client_name "consignor.name",-- Грузоотправитель (Контрагент) 
+             cl_dp.clnt_id "consignee.id",       
+             cl_dp.client_name "consignee.name",-- Грузополучатель (Контрагент)        
              cl.ord_date created_at,-- Дата создания заказа      
              o.complete_date date_closed,  -- Дата завершения заказа 
              /*
@@ -926,7 +933,7 @@ create or replace package body MCSF_API is
          -- Грузополучатель
          and o.ord_id          = dp.ord_ord_id(+)
          and dp.source_type(+) = 0
-         and dp.ldpl_type(+)   = 0
+         and dp.ldpl_type(+)   = 1
          and dp.del_date(+) is Null
          and dp.source_clnt_id = cl_dp.clnt_id(+)
          -- Коносамент
@@ -956,8 +963,8 @@ create or replace package body MCSF_API is
          )
     loop
        vRow.id := cur.id;                 -- Идентификатор заказа
-       vRow.consignor := cur.consignor;   -- Грузоотправитель (Контрагент)
-       vRow.consignee := cur.consignee;   -- Грузополучатель (Контрагент)
+       vRow.consignor := t_mcsf_api_contractor_short(cur."consignor.id", cur."consignor.name");   -- Грузоотправитель (Контрагент)
+       vRow.consignee := t_mcsf_api_contractor_short(cur."consignee.id", cur."consignee.name");   -- Грузополучатель (Контрагент)
        vRow.created_at := cur.created_at; -- Дата создания заявки
        vRow.date_closed := cur.date_closed;  -- Дата закрытия заказа
      --  vRow.status := cur.status;         -- Текущий статус заказа 

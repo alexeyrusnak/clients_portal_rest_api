@@ -11,4 +11,6 @@ create or replace synonym tbl_mcsf_api_invoices for sbc.tbl_mcsf_api_invoices;
 
 create or replace synonym t_mcsf_api_delivery_car for sbc.t_mcsf_api_delivery_car;
 
+create or replace synonym t_mcsf_api_contractor_short for sbc.t_mcsf_api_contractor_short;
+
 create or replace synonym mcsf_api_helper for sbc.mcsf_api_helper;

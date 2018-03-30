@@ -14,7 +14,7 @@ create or replace package REST_API_HELPER is
   /*
   Выводит объект T_FILE в JSON
   */
-  procedure PrintT_FILE(pFile in t_mcsf_api_order_doc_file);
+  procedure PrintT_FILE(pFile in t_mcsf_api_order_doc_file, pContent boolean default false);
     
   /*
   Выводит объект T_DOCS в JSON
@@ -55,6 +55,11 @@ create or replace package REST_API_HELPER is
   Выводит объект T_DELIVERY_CAR в JSON
   */
   procedure PrintT_DELIVERY_CAR(pDeliveryCar in t_mcsf_api_delivery_car);
+  
+  /*
+  Выводит объект T_CONTRACTOR_SHORT в JSON
+  */
+  procedure PrintT_CONTRACTOR_SHORT(pContractor in t_mcsf_api_contractor_short);
   
 -- Ю.К. 21.06.2017
 procedure PrintT_FILES_depricated(p_files in mcsf_api.t_files);
@@ -124,11 +129,15 @@ create or replace package body REST_API_HELPER is
   /*
   Выводит объект T_FILE в JSON
   */
-  procedure PrintT_FILE(pFile in t_mcsf_api_order_doc_file) is
+  procedure PrintT_FILE(pFile in t_mcsf_api_order_doc_file, pContent boolean default false) is
   begin
     apex_json.write('id', pFile.id, true);
     apex_json.write('name', pFile.file_name, true);
     apex_json.write('size', pFile.file_size, true);
+    
+    if pContent then
+      apex_json.write('content', pFile.content, true);
+    end if;
   end;
   
   /*
@@ -280,6 +289,15 @@ create or replace package body REST_API_HELPER is
     apex_json.write('driver_fio', pDeliveryCar.driver_fio, true);
     apex_json.write('car_number', pDeliveryCar.car_number, true);
     apex_json.write('driver_phone', pDeliveryCar.driver_phone, true);
+  end;
+  
+  /*
+  Выводит объект T_CONTRACTOR_SHORT в JSON
+  */
+  procedure PrintT_CONTRACTOR_SHORT(pContractor in t_mcsf_api_contractor_short) is
+  begin
+    apex_json.write('id', pContractor.id, true);
+    apex_json.write('name', pContractor.name, true);
   end;
   
   -- Ю.К., 21.06.2017

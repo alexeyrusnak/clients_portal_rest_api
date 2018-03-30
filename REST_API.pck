@@ -113,6 +113,16 @@ CREATE OR REPLACE PACKAGE REST_API AS
   */
   function DownloadFile(pClntId in number, pFileId in number)
     return rest_api_err;
+    
+  /*
+  Функция удаления документов - п.4.8.6 ТЗ на АПИ
+  */
+  function AddFileToDoc return rest_api_err;
+  
+  /*
+  Вывод списка файлов - п.4.8.7 ТЗ на АПИ
+  */
+  function PrintFiles return rest_api_err;
 
   /*
   Файловый API
@@ -444,6 +454,29 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
+          
+        WHEN 'create_file' THEN
+          if IsSessionValid() then
+            lError := AddFileToDoc();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+          
+        WHEN 'files' THEN
+          if IsSessionValid() then
+            lError := PrintFiles();           
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+          
           -- Вывод информации по компании       
         WHEN 'companies' THEN
           if IsSessionValid() then
@@ -894,9 +927,13 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('place_to', null, lFilter); -- Адрес назначения
       
-      rest_api_helper.AddFilter('consignor', null, lFilter); -- Адрес отправки 
+      rest_api_helper.AddFilter('consignor.id', '"consignor.id"', lFilter);
       
-      rest_api_helper.AddFilter('consignee', null, lFilter); -- Адрес назначения       
+      rest_api_helper.AddFilter('consignor.name', '"consignor.name"', lFilter); -- Грузоотправитель (Контрагент)
+      
+      rest_api_helper.AddFilter('consignee.id', '"consignee.id"', lFilter); 
+      
+      rest_api_helper.AddFilter('consignee.name', '"consignee.name"', lFilter); -- Грузополучатель (Контрагент)       
       
       lQueryFilter := replace(apex_json.get_varchar2('data.query', null), '''', '"');
     
@@ -961,28 +998,29 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c007            => lRc.amount,
                                      p_c008            => lRc.notification_count,
                                      p_c009            => lRc.cargo_name,
-                                     p_c010            => lRc.contractor,
-                                     p_c011            => to_char(lRc.created_at,PkgDefaultDateFormat),
-                                     p_c012            => to_char(lRc.date_from,PkgDefaultDateFormat),
-                                     p_c013            => to_char(lRc.date_to,PkgDefaultDateFormat),
-                                     p_c014            => lRc.te_type,
-                                     p_c015            => lRc.port_svh,
-                                     p_c016            => lRc.departure_country,
-                                     p_c017            => to_char(lRc.date_closed,PkgDefaultDateFormat),
-                                     p_c018            => to_char(lRc.shipment_date,PkgDefaultDateFormat),
-                                     p_c019            => to_char(lRc.unload_transhipment_plan_date,PkgDefaultDateFormat),
-                                     p_c020            => to_char(lRc.unload_destination_plan_date,PkgDefaultDateFormat),
-                                     p_c021            => to_char(lRc.unload_destination_fact_date,PkgDefaultDateFormat),
-                                     p_c022            => to_char(lRc.date_dt,PkgDefaultDateFormat),
-                                     p_c023            => to_char(lRc.date_release_dt,PkgDefaultDateFormat),
-                                     p_c024            => lRc.dt_number,
-                                     p_c025            => to_char(lRc.date_export_port,PkgDefaultDateFormat),
-                                     p_c026            => to_char(lRc.date_return_empty,PkgDefaultDateFormat),
-                                     p_c027            => to_char(lRc.customer_delivery_date,PkgDefaultDateFormat),
-                                     p_c028            => lRc.am_number,
-                                     p_c029            => lRc.fio_driver,
-                                     p_c030            => lRc.consignor,
-                                     p_c031            => lRc.consignee
+                                     p_c010            => to_char(lRc.created_at,PkgDefaultDateFormat),
+                                     p_c011            => to_char(lRc.date_from,PkgDefaultDateFormat),
+                                     p_c012            => to_char(lRc.date_to,PkgDefaultDateFormat),
+                                     p_c013            => lRc.te_type,
+                                     p_c014            => lRc.port_svh,
+                                     p_c015            => lRc.departure_country,
+                                     p_c016            => to_char(lRc.date_closed,PkgDefaultDateFormat),
+                                     p_c017            => to_char(lRc.shipment_date,PkgDefaultDateFormat),
+                                     p_c018            => to_char(lRc.unload_transhipment_plan_date,PkgDefaultDateFormat),
+                                     p_c019            => to_char(lRc.unload_destination_plan_date,PkgDefaultDateFormat),
+                                     p_c020            => to_char(lRc.unload_destination_fact_date,PkgDefaultDateFormat),
+                                     p_c021            => to_char(lRc.date_dt,PkgDefaultDateFormat),
+                                     p_c022            => to_char(lRc.date_release_dt,PkgDefaultDateFormat),
+                                     p_c023            => lRc.dt_number,
+                                     p_c024            => to_char(lRc.date_export_port,PkgDefaultDateFormat),
+                                     p_c025            => to_char(lRc.date_return_empty,PkgDefaultDateFormat),
+                                     p_c026            => to_char(lRc.customer_delivery_date,PkgDefaultDateFormat),
+                                     p_c027            => lRc.am_number,
+                                     p_c028            => lRc.fio_driver,
+                                     p_c029            => lRc."consignor.id",
+                                     p_c030            => lRc."consignor.name",
+                                     p_c031            => lRc."consignee.id",
+                                     p_c032            => lRc."consignee.name"
                                      );
         end loop;
       
@@ -1002,28 +1040,29 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          to_number(c.c007) "amount",
                          to_number(c.c008) "notification_count",
                          c.c009 "cargo_name",
-                         c.c010 "contractor",
-                         c.c011 "created_at",
-                         c.c012 "date_from",
-                         c.c013 "date_to",
-                         c.c014 "te_type",
-                         c.c015 "port_svh",
-                         c.c016 "departure_country",
-                         c.c017 "date_closed",
-                         c.c018 "shipment_date",
-                         c.c019 "unload_transhipment_plan_date",
-                         c.c020 "unload_destination_plan_date",
-                         c.c021 "unload_destination_fact_date",
-                         c.c022 "date_dt",
-                         c.c023 "date_release_dt",
-                         c.c024 "dt_number",
-                         c.c025 "date_export_port",
-                         c.c026 "date_return_empty",
-                         c.c027 "customer_delivery_date",
-                         c.c028 "am_number",
-                         c.c029 "fio_driver",
-                         c.c030 "consignor",
-                         c.c031 "consignee"
+                         c.c010 "created_at",
+                         c.c011 "date_from",
+                         c.c012 "date_to",
+                         c.c013 "te_type",
+                         c.c014 "port_svh",
+                         c.c015 "departure_country",
+                         c.c016 "date_closed",
+                         c.c017 "shipment_date",
+                         c.c018 "unload_transhipment_plan_date",
+                         c.c019 "unload_destination_plan_date",
+                         c.c020 "unload_destination_fact_date",
+                         c.c021 "date_dt",
+                         c.c022 "date_release_dt",
+                         c.c023 "dt_number",
+                         c.c024 "date_export_port",
+                         c.c025 "date_return_empty",
+                         c.c026 "customer_delivery_date",
+                         c.c027 "am_number",
+                         c.c028 "fio_driver",
+                         c.c029 "consignor.id",
+                         c.c030 "consignor.name",
+                         c.c031 "consignee.id",
+                         c.c032 "consignee.name"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1043,7 +1082,6 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('amount', lRc."amount", true);
         apex_json.write('notification_count', lRc."notification_count", true);
         apex_json.write('cargo_name', lRc."cargo_name", true);
-        apex_json.write('contractor', lRc."contractor", true);
         apex_json.write('created_at', lRc."created_at", true);
         apex_json.write('date_from', lRc."date_from", true);
         apex_json.write('date_to', lRc."date_to", true);
@@ -1062,8 +1100,16 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('customer_delivery_date', lRc."customer_delivery_date", true);
         apex_json.write('am_number', lRc."am_number", true);
         apex_json.write('fio_driver', lRc."fio_driver", true);
-        apex_json.write('consignor', lRc."consignor", true);
-        apex_json.write('consignee', lRc."consignee", true);
+        
+        apex_json.open_object('consignor');
+        apex_json.write('id', lRc."consignor.id", true);
+        apex_json.write('name', lRc."consignor.name", true);
+        apex_json.close_object;
+        
+        apex_json.open_object('consignee');
+        apex_json.write('id', lRc."consignee.id", true);
+        apex_json.write('name', lRc."consignee.name", true);
+        apex_json.close_object;
       
         apex_json.close_object;
       
@@ -1136,8 +1182,15 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         cou := cou + 1;
         
         apex_json.write('id', l_c.id, true);
-        apex_json.write('consignor', l_c.consignor, true);
-        apex_json.write('consignee', l_c.consignee, true);
+        
+        apex_json.open_object('consignor');          
+        rest_api_helper.PrintT_CONTRACTOR_SHORT(l_c.consignor);
+        apex_json.close_object;
+        
+        apex_json.open_object('consignee');          
+        rest_api_helper.PrintT_CONTRACTOR_SHORT(l_c.consignee);
+        apex_json.close_object;
+        
         apex_json.write('created_at',  to_char(l_c.created_at, PkgDefaultDateFormat), true);
         apex_json.write('date_closed',  to_char(l_c.date_closed, PkgDefaultDateFormat), true);                        
        -- apex_json.write('status', l_c.status, true);
@@ -1538,6 +1591,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     lDocNumber    varchar2(255) := null;
     lDocName      varchar2(255) := null;
     lShortContent varchar2(255) := null;
+    
+    lDoc t_mcsf_api_order_doc := null;
   
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
@@ -1593,9 +1648,24 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                  
         if lDocId is not null and lDocId > 0 then
           lIsSuccess := true;
-          apex_json.open_object('data');
-          apex_json.write('id', lDocId, true);
-          apex_json.close_object;
+          
+          lDoc := mcsf_api.GetDocument(pClntId => lCompanyId, pId => lDocId);
+      
+          if lDoc is not null then
+            
+            apex_json.open_object('data');
+            
+            rest_api_helper.PrintT_DOC(lDoc);
+          
+            apex_json.close_object;
+            
+          else
+            
+            lError := Errors(8);
+            lIsSuccess := false;
+            
+          end if;
+          
         else
           lIsSuccess := false;
         end if;
@@ -1869,7 +1939,167 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     return lError;
   
   end;
+  
+  /*
+  Функция удаления документов - п.4.8.6 ТЗ на АПИ
+  */
+  function AddFileToDoc return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+    
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+  
+    lDocId number := null;
+    lFile t_mcsf_api_order_doc_file;
+  
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, PkgClientIdAttributeNumber));
+  
+    -- Данные
+    begin
+      
+      lDocId := apex_json.get_number(p_path => 'data.doc_id', p_default => null);
+      
+      --lFileName :=       
+      lFile := new t_mcsf_api_order_doc_file(
+            null,
+            apex_json.get_varchar2(p_path => 'data.file.name', p_default => null),
+            apex_json.get_number(p_path => 'data.file.size', p_default => 0),
+            apex_json.get_clob(p_path => 'data.file.content', p_default => null)
+      );
+      
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(9);
+    end;
+    
+    -- Проверка обязательных
+    
+    if lDocId is null or lDocId <= 0 then
+      lIsSuccess := false;
+      lError := rest_api_err('required_missing', 'doc_id', 0);
+    end if;
+    
+    if lFile.file_name is null then
+      lIsSuccess := false;
+      lError := rest_api_err('required_missing', 'file.name', 0);
+    end if;
+    
+    if lFile.content is null then
+      lIsSuccess := false;
+      lError := rest_api_err('required_missing', 'file.content', 0);
+    end if;
+  
+    if lIsSuccess then
+      null;
+    end if;
+  
+    if lIsSuccess then
+      lFile.id := mcsf_api.AddFileToDocument(pClntId   => lCompanyId,
+                                            pDocId    => lDocId,
+                                            pFileBody => mcsf_api_helper.decode_base64(lFile.content),
+                                            pFileName => lFile.file_name);
+      
+      if lFile.id > 0 then
+        lIsSuccess := true;
+        
+        
+        for lRc in (select * from table(mcsf_api_helper.GetDocFiles(lDocId, lFile.id))) loop
+          
+            lFile := new t_mcsf_api_order_doc_file(lRc.id, lRc.file_name, lRc.file_size, lRc.content);
+        
+        end loop;  
+        
+      else
+        lError     := Errors(7);
+        lIsSuccess := false;
+      end if;
+                         
+      if lIsSuccess then
+        apex_json.open_object('data');
+        rest_api_helper.PrintT_FILE(lFile);
+        apex_json.close_object;
+      else
+        lIsSuccess := false;
+      end if;
+      
+    end if;
+  
+    return lError;
+    
+  end;
 
+  /*
+  Вывод списка файлов - п.4.8.7 ТЗ на АПИ
+  */
+  function PrintFiles return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+    
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+    
+    lDocId number;
+    lFileId number;
+    lOrderId number;
+    lContent boolean := true;
+    
+    lFile t_mcsf_api_order_doc_file;
+    
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
+    
+    -- Filters
+    begin
+      
+      lDocId := apex_json.get_number('filter.doc_id', apex_json.get_number('filter.doc_id.value', null));
+      lFileId := apex_json.get_number('filter.file_id', apex_json.get_number('filter.file_id.value', null));
+      lOrderId := apex_json.get_number('filter.order_id', apex_json.get_number('filter.order_id.value', null));
+      
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+    
+    -- Проверка обязательных
+    
+    if lDocId is null and lFileId is null and lOrderId is null then
+      lIsSuccess := false;
+      lError := rest_api_err('required_missing', 'doc_id or file_id or order_id', 0);
+    end if;
+    
+    if lIsSuccess then
+      
+      apex_json.open_array('data');
+      
+      for lRc in (select * from table(mcsf_api_helper.GetDocFiles(pDocId => lDocId, 
+                                                                  pFileId => lFileId, 
+                                                                  pOrderId => lOrderId,
+                                                                  pContent => 1
+                                                                  ))) loop
+        
+          lFile := new t_mcsf_api_order_doc_file(lRc.id, lRc.file_name, lRc.file_size, lRc.content);
+          
+          apex_json.open_object;
+          rest_api_helper.PrintT_FILE(lFile, TRUE);
+          apex_json.close_object;
+          
+      end loop;
+      
+      apex_json.close_array;
+       
+    end if;
+    
+    return lError;
+  
+  end;
+
+  
   /*
   Файловый API
   */
