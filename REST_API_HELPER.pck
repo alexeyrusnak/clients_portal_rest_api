@@ -66,7 +66,7 @@ procedure PrintT_FILES_depricated(p_files in mcsf_api.t_files);
   
 -- Ю.К. 21.06.2017
 -- Литеральная реализация SQL Фильтра
-function make_filter_string(
+function make_filter_string_depricated(
     p_col varchar2 -- Column Name
   , p_type varchar2 -- ('=', '!=', '>', '<', '>=', '<=', 'like', 'between')
   , p_value varchar2 -- CSV (,)
@@ -310,7 +310,7 @@ create or replace package body REST_API_HELPER is
   end;
 
 -- Ю.К., 22.06.2017
-function make_filter_string(
+function make_filter_string_depricated(
     p_col varchar2
   , p_type varchar2
   , p_value varchar2
@@ -361,7 +361,7 @@ begin
     return 'Error: Wrong Type/Value combination';
   end if;
   return v_filter;
-end make_filter_string;
+end make_filter_string_depricated;
 
 function IsDate(pTestStrin varchar, pFormat out varchar) return boolean is
   lDate date;

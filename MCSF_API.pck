@@ -212,79 +212,115 @@ procedure GetFile(pClntId in clients_dic.clnt_id%type,    -- принадлежность доку
                   pFileName out doc_stores.file_name%type  -- имя файла
                   ) ;
                   
---*********************************************************************************************************************                    
-           
-  -- Функия проверки принадлежености заказа Клиенту, которому принадлежит текущий пользователь портала для Клиентов          
-  function CheckOwnerOrder(pId t_orders.ord_id%type,
-                           pClntId clients_dic.clnt_id%type) return boolean; 
-  -- Данные о компании
-  type t_company is record(
-       id clients_dic.clnt_id%type,      -- ИД компании
-       client_name clients_dic.client_name%type, -- Наименование компании
-       phone  varchar2(100),             -- Рабочий телефон компании
-       plan tarif_plans.def%type,        -- Тарифный план компании
-       total_orders number               -- Количество заказов за историю работы компании
-       );
-  type tbl_company is table of t_company; 
-  -- Функция выдачи данных по компании                            
-  function fn_company_get(pClntId clients_dic.clnt_id%type)
-           return tbl_company pipelined parallel_enable;
-  type t_company_contacts is record(
-       fio varchar2(4000),   -- ФИО контактного лица
-       job client_contacts.job%type, -- должность
-       phone client_contacts.phone%type, -- номер рабочего телефона
-       mobile client_contacts.mobile%type -- номер мобильного телефона
-       );
-  type tbl_company_contacts is table of t_company_contacts;             
-  function fn_company_contacts(pClntId clients_dic.clnt_id%type)
-           return tbl_company_contacts pipelined parallel_enable;   
-           
-  -- Функция выдачи данных о дебиторской задолженности в по валютам счетов
-  type t_sum is record(
-       currency currencies.code%type, -- Валюта задолженности
-       debet   number(15,2)           -- Сумма задолженности       
-       );
-  type tbl_sum is table of t_sum;
-  function fn_company_getdolg(pClntId clients_dic.clnt_id%type)
-           return tbl_sum pipelined parallel_enable;                                                                       
-----------------------------------------------------------------------------------------------------------------------
--- Справочники                 
+--*********************************************************************************************************************
+
+-- Справочники ТЗ 4.15
+--*********************************************************************************************************************                  
 type t_countries is record(
       id countries.cou_id%type,    -- ИД страны
       def countries.def%type           -- Страна
 );
+
+type tbl_countries is table of t_countries;
+
 type t_regions is record(
       id continents.cntn_id%type,                     -- ИД континента
       region_name continents.region_name%type         -- Континет (регион)
 );
+
+type tbl_regions is table of t_regions;
+
 type t_cities is record(
       id cities.city_id%type,     -- ИД города
       def cities.def%type         -- Город
 );
+
+type tbl_cities is table of t_cities;
+
 type t_doc_types is record(
       id doc_types_dic.dctp_id%type,   -- идентификатор типа документа
       def doc_types.def%type           -- тип документа
-);       
-type tbl_countries is table of t_countries;
-type tbl_regions is table of t_regions;
-type tbl_cities is table of t_cities;
+);
+
 type tbl_doc_types is table of t_doc_types;
+
+type t_status is record(
+      id order_statuses_dic.orst_id%type,   -- статуса
+      name order_statuses_dic.def%type           -- наименования статуса
+);
+
+type tbl_statuses is table of t_status;
+
 -- Функция возврата справочника стран
-function fn_country_list return tbl_countries pipelined parallel_enable;
+function СountriesDic return tbl_countries pipelined parallel_enable;
+
 -- Функция возврата справочника регионов
-function fn_region_list return tbl_regions pipelined parallel_enable;
+function RegionsDic return tbl_regions pipelined parallel_enable;
+
 -- Функция возврата справочника городов
-function fn_cities_list return tbl_cities pipelined parallel_enable;
+function CitiesDic return tbl_cities pipelined parallel_enable;
+
 -- Функция возврата данных справочника типов документов
-function fn_doc_types return tbl_doc_types pipelined parallel_enable;
+function DocTypesDic return tbl_doc_types pipelined parallel_enable;
+
+-- Функция возврата справочника статус
+function StatusesDic return tbl_statuses pipelined parallel_enable;
+
+--*********************************************************************************************************************
+
+-- Функция выдачи данных по компании ТЗ 4.2.1
+--********************************************************************************************************************* 
+
+-- Данные о компании
+type t_company is record(
+     id clients_dic.clnt_id%type,      -- ИД компании
+     client_name clients_dic.client_name%type, -- Наименование компании
+     phone  varchar2(100),             -- Рабочий телефон компании
+     plan tarif_plans.def%type,        -- Тарифный план компании
+     total_orders number               -- Количество заказов за историю работы компании
+     );
+       
+type tbl_companies is table of t_company; 
+                          
+function GetCompanies(pClntId clients_dic.clnt_id%type) return tbl_companies pipelined parallel_enable;
+
+--*********************************************************************************************************************
+
+-- Функция выдачи данных по компании ТЗ 4.2.1
+--*********************************************************************************************************************
+type t_company_contacts is record(
+     fio varchar2(4000),   -- ФИО контактного лица
+     job client_contacts.job%type, -- должность
+     phone client_contacts.phone%type, -- номер рабочего телефона
+     mobile client_contacts.mobile%type -- номер мобильного телефона
+     );
+type tbl_company_contacts is table of t_company_contacts;             
+  
+function GetCompanyContacts(pClntId clients_dic.clnt_id%type) return tbl_company_contacts pipelined parallel_enable;
+
+--*********************************************************************************************************************                     
+
+-- Функция выдачи данных о дебиторской задолженности в по валютам счетов ТЗ 4.2.1
+--*********************************************************************************************************************                           
+
+type t_sum is record(
+     currency currencies.code%type, -- Валюта задолженности
+     debet   number(15,2)           -- Сумма задолженности       
+     );
+     
+type tbl_sum is table of t_sum;
+
+function GetCompanyDolg(pClntId clients_dic.clnt_id%type) return tbl_sum pipelined parallel_enable;
+                                                                       
+--*********************************************************************************************************************
 
 -----------------------------------------------------------------------------
 --- Работа с документами
 --- Выдача документа  
-function fn_orders_doc(pID documents.dcmt_id%type,
+function fn_orders_doc_depricated(pID documents.dcmt_id%type,
                        pClntId clients_dic.clnt_id%type) return tbl_docs pipelined parallel_enable; 
 -- Ю.К. 26.06.2017
-function fn_orders_docs(
+function fn_orders_docs_depricated(
                         p_clnt_id clients_dic.clnt_id%type
                       , p_filter_string varchar2
                       , p_offset number
@@ -1570,11 +1606,11 @@ exception
     end;    
 end; 
 
---*********************************************************************************************************************    
+--*********************************************************************************************************************
 
-----------------------------------------------------------
--- Функция возврата справочника стран
-function fn_country_list return tbl_countries pipelined parallel_enable is
+-- Справочники ТЗ 4.15
+--*********************************************************************************************************************  
+function СountriesDic return tbl_countries pipelined parallel_enable is
 begin
   for cur in (select cou_id, def 
                 from countries
@@ -1586,7 +1622,7 @@ begin
 end;
 
 -- Функция возврата справочника регионов
-function fn_region_list return tbl_regions pipelined parallel_enable is
+function RegionsDic return tbl_regions pipelined parallel_enable is
 begin
   for cur in (select cn.cntn_id, cn.region_name 
                 from continents cn
@@ -1598,7 +1634,7 @@ begin
 end; 
 
 -- Функция возврата справочника городов
-function fn_cities_list return tbl_cities pipelined parallel_enable is
+function CitiesDic return tbl_cities pipelined parallel_enable is
 begin
   for cur in (select c.city_id, c.def 
                 from cities c
@@ -1610,7 +1646,7 @@ begin
 end;  
 
 -- Функция возврата данных справочника типов документов
-function fn_doc_types return tbl_doc_types pipelined parallel_enable is
+function DocTypesDic return tbl_doc_types pipelined parallel_enable is
 begin
   for cur in (select dt.dctp_id, dt.def
                 from doc_types dt
@@ -1622,9 +1658,103 @@ begin
       end loop;
       return;            
 end;
+
+-- Функция возврата справочника статус
+function StatusesDic return tbl_statuses pipelined parallel_enable is
+begin
+  for cur in (select os.orst_id id, os.def "name" from order_statuses os order by os.orst_id)
+      loop
+        pipe row(cur);
+      end loop;
+      return;            
+end;
+
+--********************************************************************************************************************* 
+
+
+-- Функция выдачи данных по компании ТЗ 4.2.1
+--*********************************************************************************************************************                           
+function GetCompanies(pClntId clients_dic.clnt_id%type) return tbl_companies pipelined parallel_enable is
+  
+lTotalOrders number;
+
+ -- Функция подсчета количества заказов за историю компании
+ function GetTotalOrders(pClntId in clients.clnt_id%type) return number is
+ begin
+   select count(cr.clrq_id) 
+     into lTotalOrders
+     from client_requests cr
+    where cr.clnt_clnt_id = pClntId and
+          cr.del_date is null; 
+   return lTotalOrders;
+ exception
+   when others then
+     return 0;  
+ end; 
+  
+begin
+  
+  lTotalOrders := GetTotalOrders(pClntId);
+  
+  for cur in (select cl.clnt_id,                          --  ИД компании
+                     cl.client_name,                      -- Название компании
+                     null phone,                          -- Рабочий телефон (появится в новых версиях системы)
+                     tp.def tarif_plan,                   -- Тарифный план                    
+                     lTotalOrders total_orders            -- Кол-во заказов за всю историю работы
+                from clients cl, client_histories ch,tarif_plans tp
+               where cl.clnt_id = pClntId and
+                     ch.clnt_clnt_id = cl.clnt_id and
+                     sysdate between ch.start_date and ch.end_date and
+                     tp.trpl_id = ch.trpl_trpl_id)
+   loop
+      pipe row(cur);
+   end loop;
+   return;           
+end;
+
+--********************************************************************************************************************* 
+
+
+-- Функция выдачи данных по компании ТЗ 4.2.1
+--*********************************************************************************************************************  
+function GetCompanyContacts(pClntId clients_dic.clnt_id%type) return tbl_company_contacts pipelined parallel_enable is
+begin
+  for cur in (select last_name || ' ' || first_name fio,
+                     job, 
+                     phone, 
+                     mobile
+                from client_contacts
+               where clnt_clnt_id = pClntId)
+  loop
+     pipe row(cur);
+  end loop;
+  return;               
+end;
+
+--*********************************************************************************************************************  
+
+
+-- Функция выдачи данных о дебиторской задолженности в по валютам счетов ТЗ 4.2.1
+--********************************************************************************************************************* 
+function GetCompanyDolg(pClntId clients_dic.clnt_id%type) return tbl_sum pipelined parallel_enable is                      
+begin
+  for l_cur in (
+     select t.cur_code currency, 
+            t.amount debet
+       from table(mcsf_api.GetClientDebetDolgEx(p_clnt_id => pClntId)) t
+     )
+  loop
+    pipe row (l_cur);
+  end loop;
+  return; 
+end;
+
+--*********************************************************************************************************************
+    
+
 ----------------------------------------------------------------------------------------------------
 ---- Работа с документами
-function fn_orders_doc(pID documents.dcmt_id%type,
+function fn_orders_doc_depricated(pID documents.dcmt_id%type,
                        pClntId clients_dic.clnt_id%type) return tbl_docs pipelined parallel_enable  is
 begin
    for cur in (select d.dcmt_id id,       -- Идентификатор документа
@@ -1651,7 +1781,7 @@ begin
 end;
 
 -- Ю.К. 26.06.2017
-function fn_orders_docs(
+function fn_orders_docs_depricated(
                         p_clnt_id clients_dic.clnt_id%type
                       , p_filter_string varchar2
                       , p_offset number
@@ -1703,82 +1833,9 @@ begin
      end loop;
      close cur;
      return;       
-end fn_orders_docs;                  
-
--- Функция выдачи данных по компании                            
-function fn_company_get(pClntId clients_dic.clnt_id%type)
-           return tbl_company pipelined parallel_enable is
-vRow t_company;
-TotalOrders number;
-currency_code currencies_dic.code%type;
- -- Функция подсчета количества заказов за историю компании
- function getTotalorders(pClntId in clients.clnt_id%type) return number is
- begin
-   select count(cr.clrq_id) 
-     into TotalOrders
-     from client_requests cr
-    where cr.clnt_clnt_id = pClntId and
-          cr.del_date is null; 
-   return TotalOrders;
- exception
-   when others then
-     return 0;  
- end; 
-  
-begin
-  TotalOrders := getTotalorders(pClntId);
-  for cur in (select cl.clnt_id,               --  ИД компании
-                     cl.client_name,           -- Название компании
-                     ' ' phone,               -- Рабочий телефон (появится в новых версиях системы)
-                     tp.def tarif_plan,        -- Тарифный план                    
-                     TotalOrders total_orders  -- Кол-во заказов за всю историю работы
-                from clients cl, client_histories ch,tarif_plans tp
-               where cl.clnt_id = pClntId and
-                     ch.clnt_clnt_id = cl.clnt_id and
-                     sysdate between ch.start_date and ch.end_date and
-                     tp.trpl_id = ch.trpl_trpl_id)
-   loop
-      pipe row(cur);
-   end loop;
-   return;           
-end; 
-
--- Выдача контактных лиц компании
-function fn_company_contacts(pClntId clients_dic.clnt_id%type)
-           return tbl_company_contacts pipelined parallel_enable is
-begin
-  for cur in (select last_name || ' ' || first_name fio,
-                     job, 
-                     nvl(phone,'Данные отсутствуют') phone, 
-                     nvl(mobile,'Данные отсутствуют') mobile
-                from client_contacts
-               where clnt_clnt_id = pClntId)
-  loop
-     pipe row(cur);
-  end loop;
-  return;               
-end;                                                         
+end fn_orders_docs_depricated;                                                                           
                                                                         
---*********************************************************************************************************************
-  -- Функия проверки принадлежности заказа Клиенту, которому принадлежит текущий пользователь портала для Клиентов          
--- ********************************************************************************  
-function CheckOwnerOrder(pId t_orders.ord_id%type,
-                         pClntId clients_dic.clnt_id%type) return boolean is
-ClntRqstId client_requests.clnt_clnt_id%type;
-begin
-  select cl.clnt_clnt_id
-    into ClntRqstId
-    from client_requests cl, clrq_orders co
-   where co.ord_ord_id = pId and cl.clrq_id = co.clrq_clrq_id;
-  if ClntRqstId = pClntId then
-     return true;
-  else
-     return false;
-  end if;       
-exception
-  when no_data_found then
-    return false;    
-end;
+
 --*********************************************************************************************************************
   -- Функция(и) для отчетов и графиков
 --*********************************************************************************************************************
@@ -2414,21 +2471,6 @@ begin
     pipe row (l_cur);
   end loop;
   return;
-end;
-
--- Функция выдачи данных о дебиторской задолженности в по валютам счетов
-function fn_company_getdolg(pClntId clients_dic.clnt_id%type)
-           return tbl_sum pipelined parallel_enable is                      
-begin
-  for l_cur in (
-     select t.cur_code currency, 
-            t.amount debet
-       from table(mcsf_api.GetClientDebetDolgEx(p_clnt_id => pClntId)) t
-     )
-  loop
-    pipe row (l_cur);
-  end loop;
-  return; 
 end;
 
 --===================================================================================

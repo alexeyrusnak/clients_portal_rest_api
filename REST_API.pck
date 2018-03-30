@@ -153,6 +153,11 @@ CREATE OR REPLACE PACKAGE REST_API AS
   Вывод списка типов документов
   */
   function PrintDocTypList return rest_api_err;
+  
+    /*
+  Вывод справочника статусов
+  */
+  function PrintStatusesDic return rest_api_err;
 
   /*
   Вывод коллекции документов Ю.К. 26.06.2017
@@ -392,6 +397,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         WHEN 'doctype_list' THEN
           if IsSessionValid() then
             lError := PrintDocTypList();
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;
+          
+        WHEN 'statuses' THEN
+          if IsSessionValid() then
+            lError := PrintStatusesDic();
             if lError.success != 1 then
               lIsSuccess := false;
             end if;
@@ -783,16 +799,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     apex_json.write('login', lCurrentUserName);
     apex_json.write('email', APEX_UTIL.GET_EMAIL(lCurrentUserName));
     apex_json.write('phone', APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 2));
-    /*
-    apex_json.write('first_name',
-                    APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));
-                    */
-    apex_json.write('name',
-                    APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));                
+    apex_json.write('name', APEX_UTIL.GET_FIRST_NAME(lCurrentUserName));                
     apex_json.write('last_name', APEX_UTIL.GET_LAST_NAME(lCurrentUserName));
-  
-    apex_json.write('company',
-                    APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
+    apex_json.write('company', APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
   
     apex_json.close_object;
   end;
@@ -2264,7 +2273,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(mcsf_api.fn_country_list) t) c
+                            from TABLE(mcsf_api.СountriesDic) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -2287,7 +2296,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(mcsf_api.fn_country_list) t;
+      from TABLE(mcsf_api.СountriesDic) t;
   
     apex_json.write('total', lColectionCount);
   
@@ -2328,7 +2337,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(mcsf_api.fn_region_list) t) c
+                            from TABLE(mcsf_api.RegionsDic) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -2351,7 +2360,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(mcsf_api.fn_region_list) t;
+      from TABLE(mcsf_api.RegionsDic) t;
   
     apex_json.write('total', lColectionCount);
   
@@ -2392,7 +2401,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(mcsf_api.fn_cities_list) t) c
+                            from TABLE(mcsf_api.CitiesDic) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -2415,7 +2424,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(mcsf_api.fn_cities_list) t;
+      from TABLE(mcsf_api.CitiesDic) t;
   
     apex_json.write('total', lColectionCount);
   
@@ -2456,7 +2465,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     
       for l_c in (select *
                     from (select ROWNUM seq_id, t.*
-                            from TABLE(mcsf_api.fn_doc_types) t) c
+                            from TABLE(mcsf_api.DocTypesDic) t) c
                    where c.seq_id > lOffset
                      and c.seq_id <= lOffset + lLimit) loop
       
@@ -2479,7 +2488,69 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     select count(t.id)
       into lColectionCount
-      from TABLE(mcsf_api.fn_doc_types) t;
+      from TABLE(mcsf_api.DocTypesDic) t;
+  
+    apex_json.write('total', lColectionCount);
+  
+    apex_json.close_object();
+  
+    return lError;
+  end;
+  
+  /*
+  Вывод справочника статусов
+  */
+  function PrintStatusesDic return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    lOffset number;
+    lLimit  number;
+  
+    lColectionCount number := 0;
+  
+  begin
+  
+    -- filters
+    begin
+      lOffset := apex_json.get_number(p_path    => 'offset', p_default => PkgDefaultOffset);
+      lLimit  := apex_json.get_number(p_path    => 'limit', p_default => PkgDefaultLimit);
+    
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+  
+    if lIsSuccess then
+      apex_json.open_array('data');
+    
+      for l_c in (select *
+                    from (select ROWNUM seq_id, t.*
+                            from TABLE(mcsf_api.StatusesDic) t) c
+                   where c.seq_id > lOffset
+                     and c.seq_id <= lOffset + lLimit) loop
+      
+        apex_json.open_object;
+      
+        apex_json.write('seq_id', l_c.seq_id, true);
+        apex_json.write('id', l_c.id, true);
+        apex_json.write('name', l_c.name, true);
+      
+        apex_json.close_object;
+      end loop;
+    end if;
+  
+    apex_json.close_array;
+  
+    -- Pager
+    apex_json.open_object('pager');
+  
+    apex_json.write('offset', lOffset);
+  
+    select count(t.id)
+      into lColectionCount
+      from TABLE(mcsf_api.DocTypesDic) t;
   
     apex_json.write('total', lColectionCount);
   
@@ -2528,7 +2599,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                               p_default => null);
       if v_type_id_val is not null then
         -- typ MAY BE null, '=' will be taken
-        v_filter_wrd := rest_api_helper.make_filter_string(p_col   => 'dctp_id',
+        v_filter_wrd := rest_api_helper.make_filter_string_depricated(p_col   => 'dctp_id',
                                                            p_type  => v_type_id_typ,
                                                            p_value => v_type_id_val);
         if instr(v_filter_wrd, 'Error') != 0 then
@@ -2544,7 +2615,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                              p_default => null);
       if v_ord_id_val is not null then
         -- typ MAY BE null, '=' will be taken
-        v_filter_wrd := rest_api_helper.make_filter_string(p_col   => 'ord_id',
+        v_filter_wrd := rest_api_helper.make_filter_string_depricated(p_col   => 'ord_id',
                                                            p_type  => v_ord_id_typ,
                                                            p_value => v_ord_id_val);
         if instr(v_filter_wrd, 'Error') != 0 then
@@ -2560,7 +2631,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                            p_default => null);
       if v_date_val is not null then
         -- typ MAY BE null, '=' will be taken
-        v_filter_wrd := rest_api_helper.make_filter_string(p_col   => 'doc_date',
+        v_filter_wrd := rest_api_helper.make_filter_string_depricated(p_col   => 'doc_date',
                                                            p_type  => v_date_typ,
                                                            p_value => v_date_val);
         if instr(v_filter_wrd, 'Error') != 0 then
@@ -2581,7 +2652,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       -- Данные по документу
       apex_json.open_array('data');
       for c in (select *
-                  from table(mcsf_api.fn_orders_docs(p_clnt_id       => lCompanyId,
+                  from table(mcsf_api.fn_orders_docs_depricated(p_clnt_id       => lCompanyId,
                                                      p_filter_string => v_filter_str,
                                                      p_offset        => lOffset,
                                                      p_limit         => lLimit))) loop
@@ -2612,41 +2683,58 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   function Companies return rest_api_err is
     lIsSuccess boolean := true;
     lError     rest_api_err := Errors(1);
-    --lCurrentUserId   number;
     lCurrentUserName varchar2(255);
     lCompanyId       number;
-    lRc              sys_refcursor;
   begin
     lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
     lCompanyId       := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName,1));
     if lIsSuccess then
+      
       -- Данные по компании
       apex_json.open_object('data');
-      for l_c in (select *
-                   from TABLE(mcsf_api.fn_company_get(pClntId => lCompanyId))) loop
-        apex_json.write('id', l_c.id, true);
-        apex_json.write('name', l_c.client_name, true);
-        apex_json.write('phone', l_c.phone, true);        
-        apex_json.write('plan', l_c.plan, true);
+      
+      for lRc in (select * from TABLE(mcsf_api.GetCompanies(pClntId => lCompanyId))) loop
+        
+        apex_json.write('id', lRc.id, true);
+        apex_json.write('name', lRc.client_name, true);
+        apex_json.write('phone', lRc.phone, true);        
+        apex_json.write('plan', lRc.plan, true);
+        
         -- Contacts - Массив контактныхх лиц
-        open lRc for
-          select *
-            from table(mcsf_api.fn_company_contacts(pClntId => lCompanyId));
-        apex_json.write('contacts', lRc);
-       -- Currency - данные о задолженности компании во всех валютах
-        open lRc for
-          select *
-            from table(mcsf_api.fn_company_getdolg(pClntId => lCompanyId));        
-        apex_json.write('sum', lRc);
-        /*
-        Отладочная информация
-        htp.print('Test');
-        htp.print(l_c.debet_sum);
-           htp.print('End');
-        */   
-        apex_json.write('total_orders', l_c.total_orders, true);
+        apex_json.open_array('contacts');
+        
+        for lRcContacts in (select * from table(mcsf_api.GetCompanyContacts(pClntId => lCompanyId))) loop
+        
+            apex_json.open_object;
+            apex_json.write('fio', lRcContacts.fio ,true);
+            apex_json.write('job', lRcContacts.job ,true);
+            apex_json.write('phone', lRcContacts.phone ,true);
+            apex_json.write('mobile', lRcContacts.mobile ,true);
+            apex_json.close_object;
+        
+        end loop;
+        
+        apex_json.close_array;
+       
+        -- Currency - данные о задолженности компании во всех валютах
+        apex_json.open_array('sum');
+        
+        for lRcDolg in (select * from table(mcsf_api.GetCompanyDolg(pClntId => lCompanyId))) loop
+                
+            apex_json.open_object;
+            apex_json.write('currency', lRcDolg.currency, true);
+            apex_json.write('value', lRcDolg.debet, true);
+            apex_json.close_object;
+        
+        end loop;
+        
+        apex_json.close_array;
+          
+        apex_json.write('total_orders', lRc.total_orders, true);
       end loop;
+      
       apex_json.close_object;
+      
     end if;
     return lError;
   end;
