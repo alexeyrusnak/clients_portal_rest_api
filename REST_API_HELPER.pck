@@ -29,7 +29,7 @@ create or replace package REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_UNIT ג JSON
   */
-  procedure PrintT_UNIT(pUnit in T_UNIT);
+  procedure PrintT_UNIT(pUnit in t_mcsf_api_unit);
 
   /*
   ֲûגמהטע מבתוךע T_POINT ג JSON
@@ -181,7 +181,7 @@ create or replace package body REST_API_HELPER is
   /*
   ֲûגמהטע מבתוךע T_UNIT ג JSON
   */
-  procedure PrintT_UNIT(pUnit in T_UNIT) is
+  procedure PrintT_UNIT(pUnit in t_mcsf_api_unit) is
   begin
     apex_json.write('type', pUnit.type_unit, true);
     /*

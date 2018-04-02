@@ -1226,13 +1226,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.close_array;      
       
         -- Информация о ТЕ - unit
-        apex_json.open_array('unit');
-        for elem in 1 .. l_c.unit.count loop
-          apex_json.open_object;                    
-          rest_api_helper.PrintT_UNIT(l_c.unit(elem));
-          apex_json.close_object;                    
-        end loop;
-        apex_json.close_array;
+        apex_json.open_object('unit');                    
+        rest_api_helper.PrintT_UNIT(l_c.unit);
+        apex_json.close_object; 
         
         -- Документы по заказу - doc[]
         apex_json.open_array('doc');

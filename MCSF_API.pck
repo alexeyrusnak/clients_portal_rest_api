@@ -96,7 +96,7 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    -- status              order_statuses.def%type,              -- Cтатус заказа
    messages            tbl_message,                          -- Сообщения менеджера 
    cargo               tbl_cargo,                            -- Информация о грузе 
-   unit                tbl_unit,                             -- Информация о ТЕ
+   unit                t_mcsf_api_unit,                       -- Информация о ТЕ
    doc                 tbl_mcsf_api_order_docs,              -- Прилагаемые документы 
    -- receivable_cost     invoices.price%type,               -- Сумма задолженности
    -- amount_cost         invoices.price%type,               -- Оплаченная сумма
@@ -833,7 +833,6 @@ create or replace package body MCSF_API is
   vRow t_order_extended_record;
   vRow_rummage t_mcsf_api_rummage;
   vRow_doc t_mcsf_api_order_doc;
-  vRow_unit t_unit;
   vRow_cargo t_cargo;
   --vRow_messages t_message;
   vRow_doc_files tbl_mcsf_api_order_doc_files;
@@ -1047,17 +1046,12 @@ create or replace package body MCSF_API is
                vRow.cargo(i)    :=  vRow_cargo;
        end loop;
        -- Информация о ТЕ ------------------------------
-       vRow.unit := tbl_unit();
-       i := 0;
        for c3 in (select ct.def || ' ' || c.cont_index || c.cont_number unit_info
                     from t_orders o, conteiners c, conteiner_types ct
                    where o.ord_id = vRow.id and
                          c.cont_id (+)= o.cont_cont_id and
                          ct.cntp_id (+)= c.cntp_cntp_id ) loop
-           vRow_unit := t_unit(c3.unit_info);
-           i := i + 1;
-           vRow.unit.extend;
-           vRow.unit(i) :=  vRow_unit;
+           vRow.unit := t_mcsf_api_unit(c3.unit_info);
        end loop;    
        -- Прилагаемые документы ------------------------
        vRow.doc       := tbl_mcsf_api_order_docs();
