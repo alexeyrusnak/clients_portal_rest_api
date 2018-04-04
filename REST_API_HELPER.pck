@@ -149,8 +149,8 @@ create or replace package body REST_API_HELPER is
     apex_json.write('order_id', pDoc.order_id, true);
     apex_json.write('type_id', pDoc.type_id, true);
     apex_json.write('type', pDoc.doc_type, true);
-    apex_json.write('date', pDoc.doc_date, true);
-    apex_json.write('uploaded_at', pDoc.uploaded_at, true);
+    apex_json.write('date', to_char(pDoc.doc_date, REST_API.PkgDefaultDateFormat), true);
+    apex_json.write('uploaded_at', to_char(pDoc.uploaded_at, REST_API.PkgDefaultDateFormat), true);
     apex_json.write('owner', pDoc.owner, true);
     
     apex_json.open_array('files');
@@ -257,8 +257,8 @@ create or replace package body REST_API_HELPER is
   */
   procedure PrintT_RUMMAGE(pRummage in t_mcsf_api_rummage) is
   begin
-    apex_json.write(pRummage.type_rummage, true);          
-    apex_json.write(pRummage.date_rummage, true);
+    apex_json.write('type_rummage',pRummage.type_rummage, true);          
+    apex_json.write('date_rummage',to_char(pRummage.date_rummage, REST_API.PkgDefaultDateFormat), true);
   end;
   
   /*
@@ -454,6 +454,9 @@ begin
            lValType := 'varchar2';
            lVal := replace(lValNode.varchar2_value, '''', '"');
            
+           -- Проверяем на 'null'
+           if lVal = 'null' then lValType := 'null'; end if;
+           
            if lType = 'like' then lVal := '%' || lVal || '%'; end if;
            
            -- Проверяем является ли тип датой
@@ -461,6 +464,9 @@ begin
            
            if lValType = 'date' then
              lRes := lRes || 'to_date(''' || lVal || ''',' || '''' || lDateFormat || '''' || ')';
+           elsif lValType = 'null' then
+             lRes := lRes || lVal;
+             if lType = '!=' then lType := 'is not'; else lType := 'is'; end if;
            else
              lRes := lRes || '''' || lVal || '''';
            end if;
@@ -537,10 +543,16 @@ begin
       if lVal is not null then
         lVal := replace(lVal, '''', '"');
         
+        -- Проверяем на 'null'
+        if lVal = 'null' then lValType := 'null'; end if;
+        
         if IsDate(lVal, lDateFormat) then lValType := 'date'; end if;
         
         if lValType = 'date' then
           lRes := lRes || 'to_date(''' || lVal || ''',' || '''' || lDateFormat || '''' || ')';
+        elsif lValType = 'null' then
+          lRes := lRes || lVal;
+          if lType = '!=' then lType := 'is not'; else lType := 'is'; end if;
         else
           lRes := lRes || '''' || lVal || '''';
         end if;
