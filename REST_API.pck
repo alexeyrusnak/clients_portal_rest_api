@@ -2299,7 +2299,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       end if;
       
     end if;
-    apex_json.write('lParams', lParams, true);
+    
     if lIsSuccess then
       lVcArr2 := APEX_UTIL.STRING_TO_TABLE(lParams);
       
@@ -2333,23 +2333,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
     if lIsSuccess then
       
-      /*apex_json.open_object('data');
-      
-      apex_json.write('link', lLinkToken, true);                                 
-        
-      apex_json.close_object;*/
       begin
-      
-        /*sys.htp.init;
-        sys.htp.p('Content-Description: File Transfer');
-        sys.htp.p('Content-Type: application/octet-stream');
-        sys.htp.p('Content-length: ' || sys.dbms_lob.getlength(lFile.content));
-        sys.htp.p('Content-Disposition: attachment; filename="' || lFile.file_name || '"');
-        sys.htp.p('Content-Transfer-Encoding: binary');
-        sys.htp.p('Expires: 0');
-        sys.htp.p('Cache-Control: must-revalidate');
-        sys.htp.p('Pragma: public');
-        sys.owa_util.http_header_close;*/
         
         sys.htp.init;
         sys.owa_util.mime_header('application/octet-stream', false, 'UTF-8');
