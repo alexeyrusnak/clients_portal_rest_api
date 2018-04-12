@@ -30,7 +30,8 @@ create or replace package MCSF_API_HELPER is
   function GetDocFiles(pDocId number default null, 
                        pFileId number default null,
                        pOrderId number default null,
-                       pContent number default 0) 
+                       pContent number default 0,
+                       pClientId number default null) 
     return tbl_mcsf_api_order_doc_files pipelined parallel_enable;
     
   /*
@@ -40,7 +41,8 @@ create or replace package MCSF_API_HELPER is
                        pOrderId number default null,
                        pFileId number default null,
                        pTypeId number default null,
-                       pContent number default 0) 
+                       pContent number default 0,
+                       pClientId number default null) 
     return t_mcsf_api_order_doc_zip;
   
   /*
@@ -67,10 +69,14 @@ create or replace package body MCSF_API_HELPER is
   function GetDocFiles(pDocId number default null, 
                        pFileId number default null,
                        pOrderId number default null,
-                       pContent number default 0) 
+                       pContent number default 0,
+                       pClientId number default null) 
     return tbl_mcsf_api_order_doc_files pipelined parallel_enable is
     
     lFile t_mcsf_api_order_doc_file;
+    
+    lIsOwnerOk boolean := false;
+    lOrderId number;
     
   begin
     
@@ -81,21 +87,39 @@ create or replace package body MCSF_API_HELPER is
     for lCursor in (select dstr_id as file_id,
                        file_name,
                        dbms_lob.getlength(doc_data) as file_size,
-                       doc_data
+                       doc_data,
+                       dcmt_dcmt_id
                   from doc_stores t
                  where (case when pDocId is null then 1 when pDocId is not null and t.dcmt_dcmt_id = pDocId then 1 else 0 end) = 1
                  and (case when pFileId is null then 1 when pFileId is not null and t.dstr_id = pFileId then 1 else 0 end) = 1
                  and (case when pOrderId is null then 1 when pOrderId is not null and t.dcmt_dcmt_id in (select dl.dcmt_dcmt_id from doc_links dl where dl.ord_ord_id = pOrderId) then 1 else 0 end) = 1
                  order by t.dstr_id) loop
                  
-      if pContent = 1 then
-        lFile := t_mcsf_api_order_doc_file(lCursor.file_id, lCursor.file_name, lCursor.file_size, encode_base64(lCursor.doc_data));
+      if pClientId is not null then
+        
+         begin
+           select dl.ord_ord_id into lOrderId from doc_links dl where dl.dcmt_dcmt_id = lCursor.dcmt_dcmt_id;
+           
+           if mcsf_api_helper.CheckOwnerOrder(lOrderId, pClientId) then
+             lIsOwnerOk := true;
+           end if;
+         exception
+           when others then
+             lIsOwnerOk := false;
+         end;
       else
-        lFile := t_mcsf_api_order_doc_file(lCursor.file_id, lCursor.file_name, lCursor.file_size, null);
+        lIsOwnerOk := true;
+      end if;           
+                 
+      if lIsOwnerOk then
+        if pContent = 1 then
+          lFile := t_mcsf_api_order_doc_file(lCursor.file_id, lCursor.file_name, lCursor.file_size, encode_base64(lCursor.doc_data));
+        else
+          lFile := t_mcsf_api_order_doc_file(lCursor.file_id, lCursor.file_name, lCursor.file_size, null);
+        end if;
+        
+        pipe row(lFile);
       end if;
-      
-      pipe row(lFile);
-     
     end loop;
   end;
   
@@ -106,10 +130,14 @@ create or replace package body MCSF_API_HELPER is
                        pOrderId number default null,
                        pFileId number default null,
                        pTypeId number default null,
-                       pContent number default 0) 
+                       pContent number default 0,
+                       pClientId number default null) 
     return t_mcsf_api_order_doc_zip is
     
     lFile t_mcsf_api_order_doc_zip;
+    
+    lIsOwnerOk boolean := false;
+    lOrderId number;
     
     lCount number := 0;
     
@@ -120,34 +148,54 @@ create or replace package body MCSF_API_HELPER is
     end if;
     
     lFile := t_mcsf_api_order_doc_zip(pOrderId || '.zip', 0, null);
+    
+    --lFile.content := EMPTY_BLOB();
   
     for lCursor in (select dstr_id as file_id,
                        file_name,
                        dbms_lob.getlength(doc_data) as file_size,
-                       doc_data
+                       doc_data,
+                       dcmt_dcmt_id
                   from doc_stores t
                  where (case when pDocId is null then 1 when pDocId is not null and t.dcmt_dcmt_id = pDocId then 1 else 0 end) = 1
                  and (case when pFileId is null then 1 when pFileId is not null and t.dstr_id = pFileId then 1 else 0 end) = 1
                  and (case when pOrderId is null then 1 when pOrderId is not null and t.dcmt_dcmt_id in (select dl.dcmt_dcmt_id from doc_links dl where dl.ord_ord_id = pOrderId) then 1 else 0 end) = 1
                  and (case when pTypeId is null then 1 when pTypeId is not null and t.dcmt_dcmt_id in (select dl.dcmt_dcmt_id from doc_links dl, documents d where dl.ord_ord_id = pOrderId and d.dcmt_id = dl.dcmt_dcmt_id and d.dctp_dctp_id = pTypeId) then 1 else 0 end) = 1
                  order by t.dstr_id) loop
-                 
-      if pContent = 1 then
+        if pClientId is not null then
+          
+         begin
+           select dl.ord_ord_id into lOrderId from doc_links dl where dl.dcmt_dcmt_id = lCursor.dcmt_dcmt_id;
+             
+           if mcsf_api_helper.CheckOwnerOrder(lOrderId, pClientId) then
+             lIsOwnerOk := true;
+           end if;
+         exception
+           when others then
+             lIsOwnerOk := false;
+         end;
+      else
+        lIsOwnerOk := true;
+      end if;            
+      
+      if lIsOwnerOk then
+        if pContent = 1 then
         
-        apex_zip.add_file (
-            p_zipped_blob => lFile.content,
-            p_file_name   => lCursor.file_name,
-            p_content     => lCursor.doc_data);
-        
+          apex_zip.add_file (
+              p_zipped_blob => lFile.content,
+              p_file_name   => lCursor.file_name,
+              p_content     => lCursor.doc_data);
+          
+        end if;
+              
+        lCount := lCount + 1;
       end if;
-            
-      lCount := lCount + 1;
-     
+      
     end loop;
     
-    if pContent = 1 then apex_zip.finish (p_zipped_blob => lFile.content); end if;
-    
     if lCount = 0 then return null; end if;
+    
+    if pContent = 1 then apex_zip.finish (p_zipped_blob => lFile.content); end if;
     
     return lFile;
     
