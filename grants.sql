@@ -17,3 +17,5 @@ grant execute on mcsf_api_helper to rest;
 
 grant execute on t_mcsf_api_unit to rest;
 grant execute on tbl_mcsf_api_units to rest;
+
+grant execute on t_mcsf_api_order_doc_zip to rest;

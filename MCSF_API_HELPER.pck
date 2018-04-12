@@ -32,6 +32,16 @@ create or replace package MCSF_API_HELPER is
                        pOrderId number default null,
                        pContent number default 0) 
     return tbl_mcsf_api_order_doc_files pipelined parallel_enable;
+    
+  /*
+  Возвращает архив файлов документов заказа
+  */
+  function GetDocZip(pDocId number default null, 
+                       pOrderId number default null,
+                       pFileId number default null,
+                       pTypeId number default null,
+                       pContent number default 0) 
+    return t_mcsf_api_order_doc_zip;
   
   /*
   Возвращает список id заказов для инфойса
@@ -87,6 +97,60 @@ create or replace package body MCSF_API_HELPER is
       pipe row(lFile);
      
     end loop;
+  end;
+  
+  /*
+  Возвращает архив файлов документов заказа
+  */
+  function GetDocZip(pDocId number default null, 
+                       pOrderId number default null,
+                       pFileId number default null,
+                       pTypeId number default null,
+                       pContent number default 0) 
+    return t_mcsf_api_order_doc_zip is
+    
+    lFile t_mcsf_api_order_doc_zip;
+    
+    lCount number := 0;
+    
+  begin
+    
+    if pOrderId is null then
+      return null;
+    end if;
+    
+    lFile := t_mcsf_api_order_doc_zip(pOrderId || '.zip', 0, null);
+  
+    for lCursor in (select dstr_id as file_id,
+                       file_name,
+                       dbms_lob.getlength(doc_data) as file_size,
+                       doc_data
+                  from doc_stores t
+                 where (case when pDocId is null then 1 when pDocId is not null and t.dcmt_dcmt_id = pDocId then 1 else 0 end) = 1
+                 and (case when pFileId is null then 1 when pFileId is not null and t.dstr_id = pFileId then 1 else 0 end) = 1
+                 and (case when pOrderId is null then 1 when pOrderId is not null and t.dcmt_dcmt_id in (select dl.dcmt_dcmt_id from doc_links dl where dl.ord_ord_id = pOrderId) then 1 else 0 end) = 1
+                 and (case when pTypeId is null then 1 when pTypeId is not null and t.dcmt_dcmt_id in (select dl.dcmt_dcmt_id from doc_links dl, documents d where dl.ord_ord_id = pOrderId and d.dcmt_id = dl.dcmt_dcmt_id and d.dctp_dctp_id = pTypeId) then 1 else 0 end) = 1
+                 order by t.dstr_id) loop
+                 
+      if pContent = 1 then
+        
+        apex_zip.add_file (
+            p_zipped_blob => lFile.content,
+            p_file_name   => lCursor.file_name,
+            p_content     => lCursor.doc_data);
+        
+      end if;
+            
+      lCount := lCount + 1;
+     
+    end loop;
+    
+    if pContent = 1 then apex_zip.finish (p_zipped_blob => lFile.content); end if;
+    
+    if lCount = 0 then return null; end if;
+    
+    return lFile;
+    
   end;
   
  /*

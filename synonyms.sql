@@ -17,3 +17,5 @@ create or replace synonym mcsf_api_helper for sbc.mcsf_api_helper;
 
 create or replace synonym t_mcsf_api_unit for sbc.t_mcsf_api_unit;
 create or replace synonym tbl_mcsf_api_units for sbc.tbl_mcsf_api_units;
+
+create or replace synonym t_mcsf_api_order_doc_zip for sbc.t_mcsf_api_order_doc_zip;

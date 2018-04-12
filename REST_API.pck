@@ -123,6 +123,16 @@ CREATE OR REPLACE PACKAGE REST_API AS
   Вывод списка файлов - п.4.8.7 ТЗ на АПИ
   */
   function PrintFiles return rest_api_err;
+  
+  /*
+  Вывод ссылка на архив с документами - п.4.8.8 ТЗ на АПИ
+  */
+  function PrintFilesZipLink return rest_api_err;
+  
+  /*
+  Функция возвращает zip файл - п.4.8.8 ТЗ на АПИ
+  */
+  procedure DownloadZipFile(pLinkToken in varchar2);
 
   /*
   Файловый API
@@ -492,6 +502,17 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
             lIsSuccess := false;
             lError     := Errors(2);
           end if;
+          
+        WHEN 'files_archive' THEN
+          if IsSessionValid() then
+            lError := PrintFilesZipLink();           
+            if lError.success != 1 then
+              lIsSuccess := false;
+            end if;
+          else
+            lIsSuccess := false;
+            lError     := Errors(2);
+          end if;   
           
           -- Вывод информации по компании       
         WHEN 'companies' THEN
@@ -2101,6 +2122,161 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     end if;
     
     return lError;
+  
+  end;
+
+  /*
+  Вывод ссылка на архив с документами - п.4.8.8 ТЗ на АПИ
+  */
+  function PrintFilesZipLink return rest_api_err is
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+    
+    lCurrentUserName varchar2(255);
+    lCompanyId       number;
+    
+    lDocId number;
+    lFileId number;
+    lOrderId number;
+    lTypeId number;
+    
+    lLinkToken varchar2(80) := dbms_random.string('A', 40);
+    
+    lFile t_mcsf_api_order_doc_zip;
+    
+  begin
+    lCurrentUserName := APEX_CUSTOM_AUTH.GET_USERNAME;
+    lCompanyId := to_number(APEX_UTIL.GET_ATTRIBUTE(lCurrentUserName, 1));
+    
+    -- Filters
+    begin
+      
+      lDocId := apex_json.get_number('filter.doc_id', apex_json.get_number('filter.doc_id.value', null));
+      lFileId := apex_json.get_number('filter.file_id', apex_json.get_number('filter.file_id.value', null));
+      lOrderId := apex_json.get_number('filter.order_id', apex_json.get_number('filter.order_id.value', null));
+      lTypeId := apex_json.get_number('filter.type_id', apex_json.get_number('filter.type_id.value', null));
+      
+    exception
+      when others then
+        lIsSuccess := false;
+        lError     := Errors(5);
+    end;
+    
+    -- Проверка обязательных
+    
+    if lOrderId is null then
+      lIsSuccess := false;
+      lError := rest_api_err('required_missing', 'order_id', 0);
+    end if;
+    
+    if lIsSuccess then
+      
+      lFile := mcsf_api_helper.GetDocZip(pDocId => lDocId,
+                                         pOrderId => lOrderId,
+                                         pFileId => lFileId,
+                                         pTypeId => lTypeId,
+                                         pContent => 0);
+      if lFile is null then
+        
+         lIsSuccess := false;
+         lError := Errors(8);
+        
+      end if; 
+      
+    end if;
+    
+    if lIsSuccess then
+      
+      apex_util.set_preference(lLinkToken, lOrderId || ':' || lDocId || ':' || lFileId || ':' || lTypeId);
+    
+      apex_json.open_object('data');
+      
+      apex_json.write('link', lLinkToken, true);                                 
+        
+      apex_json.close_object;
+      
+    end if;
+    
+    return lError;
+  
+  end;
+  
+  /*
+  Функция возвращает zip файл - п.4.8.8 ТЗ на АПИ
+  */
+  procedure DownloadZipFile(pLinkToken in varchar2) is
+  
+    lIsSuccess boolean := true;
+    lError     rest_api_err := Errors(1);
+  
+    lFile blob := null;
+  
+    lFileName varchar2(255) := '';
+    
+    lLinkParams varchar2(255) := '';
+  
+  begin
+    
+    apex_json.initialize_clob_output;
+  
+    apex_json.open_object;
+  
+    if pLinkToken is null then
+      lIsSuccess := false;
+      lError     := Errors(8);
+    end if;
+  
+    if lIsSuccess then
+      
+      apex_json.write('link', pLinkToken, true);
+      
+      lLinkParams := apex_util.get_preference(pLinkToken);
+      
+      apex_json.write('params', lLinkParams, true);  
+      
+      /*begin
+      
+        mcsf_api.GetFile(pClntId   => pClntId,
+                         pFileId   => pFileId,
+                         pFileBody => lFile,
+                         pFileName => lFileName);
+      
+        if lFile is not null then
+        
+          sys.htp.init;
+          sys.owa_util.mime_header('application/octet-stream', false, 'UTF-8');
+          sys.htp.p('Content-length: ' || sys.dbms_lob.getlength(lFile));
+          sys.htp.p('Content-Disposition: inline; filename="' || lFileName || '"');
+          sys.owa_util.http_header_close;
+        
+          sys.wpg_docload.download_file(lFile);
+        
+        else
+          lError := Errors(8);
+        end if;
+      
+      exception
+        when others then
+          lError := Errors(8);
+      end;*/
+    
+    end if;
+    
+    apex_json.write('success', lIsSuccess);
+  
+    if lIsSuccess != true then
+      PrintErrorJson(lError);
+    end if;
+  
+    apex_json.close_object;
+    
+    sys.htp.init;
+    sys.owa_util.mime_header('application/json', false, 'UTF-8');
+    sys.owa_util.http_header_close;
+  
+    HtpPrn(APEX_JSON.get_clob_output);
+  
+    apex_json.free_output;
   
   end;
 
