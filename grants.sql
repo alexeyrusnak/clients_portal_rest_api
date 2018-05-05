@@ -19,3 +19,16 @@ grant execute on t_mcsf_api_unit to rest;
 grant execute on tbl_mcsf_api_units to rest;
 
 grant execute on t_mcsf_api_order_doc_zip to rest;
+
+grant execute on T_POINT to rest;
+grant execute on T_CARGO to rest;
+
+grant execute on TBL_MESSAGE to rest;
+grant execute on TBL_CARGO to rest;
+
+grant execute on mcsf_api to rest;
+grant execute on mcsf_api_test to rest;
+
+grant execute on ins_sys_logs to rest;
+
+grant execute on stragg to rest;

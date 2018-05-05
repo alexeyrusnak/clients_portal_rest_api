@@ -474,7 +474,8 @@ i number;
 SKLAD varchar2(200);
 BEGIN
    V_MSG_INFO:=P_MESSAGE_TEXT;
-   IF (INSTR(V_MSG_INFO, '<дата заказа>') > 0) OR (INSTR(V_MSG_INFO, '<номер заказа>') > 0) THEN
+   IF (INSTR(V_MSG_INFO, '<дата заказа>') > 0) OR (INSTR(V_MSG_INFO, '<номер заказа>') > 0) OR
+      (INSTR(V_MSG_INFO, '<дата заявки>') > 0) OR (INSTR(V_MSG_INFO, '<номер заявки>') > 0) THEN
       BEGIN
         SELECT O.ORD_DATE, O.ORD_NUMBER
           INTO V_ORD_DATE, V_ORD_NUMBER
@@ -489,7 +490,9 @@ BEGIN
 
     IF (INSTR(V_MSG_INFO, '<дата выпуска ГТД>') > 0)  THEN
        BEGIN
-          select date_out
+          -- 28.03.2018 select date_out
+          --по одному заказу может быть несколько разных ГТД (например, несколько грузов, каждый из которых оформляется по разным ГТД)
+          select max(date_out)          
             INTO V_DATE_OUT_GTD
             from GTDS
            where GTD_ID in (select GTD_GTD_ID from gtd_payments where ORD_ORD_ID=P_ORD_ID);
@@ -842,6 +845,7 @@ BEGIN
 
     IF (INSTR(V_MSG_INFO, '<планируемая дата прибытия>') > 0) THEN
       BEGIN
+         /* 28.03.2018
 	       Select Decode(
 	              Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))
 	              ,'0',null,
@@ -870,6 +874,41 @@ BEGIN
 					              -- Из истории
 					              (select ow.DATE_PLAN From order_ways ow where ow.ord_ord_id = P_ORD_ID and rownum=1) DT3
 		               From dual);
+                   */
+           begin        
+              -- Берем дату прибыти из расписания движения судов по коносаменту, который предоставляется в таможню
+              select tt.eta_date
+                into V_DATE_PLAN
+                from transport_time_table tt
+               where tt.tmtb_id = (select k.tmtb_tmtb_id
+                                     from konosaments k 
+                                    where k.is_custom = 1 and
+                                          k.knsm_id in (select ko.knsm_knsm_id
+                                                          from knor_ord kd, knsm_orders ko
+                                                         where kd.ord_ord_id = P_ORD_ID and
+                                                               ko.knor_id = kd.knor_knor_id
+                                                         group by ko.knsm_knsm_id)
+                                  );
+           exception
+              when no_data_found then
+                 begin                                             
+                    -- Если нет расписания по коносаменту, то берем дату прибытия ETA дату из коносамента, предъявляемого в таможню, а не из расписания
+                    select k.eta_date
+                      into V_DATE_PLAN
+                      from konosaments k
+                     where k.knsm_id in (select ko.knsm_knsm_id
+                                           from knor_ord kd, knsm_orders ko
+                                          where kd.ord_ord_id = P_ORD_ID and
+                                                ko.knor_id = kd.knor_knor_id
+                                       group by ko.knsm_knsm_id) and
+                           k.is_custom = 1;
+                 exception
+                    when no_data_found then
+                       -- Дата не проставлена в коносаменте, который предъявляется в таможню
+                       -- возвращаем пустое значение
+                       V_DATE_PLAN:=NULL;            
+                 end;
+           end;                
       EXCEPTION
         WHEN OTHERS THEN
           V_DATE_PLAN:=NULL;
@@ -892,9 +931,13 @@ BEGIN
       END;
     END IF;
 
-
+    /*
+     26.03.2018  Термин "Заказ" заменен на термин "Заявка"
     V_MSG_INFO := REPLACE(V_MSG_INFO, '<номер заказа>',V_ORD_NUMBER);
     V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата заказа>', NVL(TO_CHAR(V_ORD_DATE,'dd.mm.yyyy'), 'N/A'));
+    */
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<номер заявки>',V_ORD_NUMBER);
+    V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата заявки>', NVL(TO_CHAR(V_ORD_DATE,'dd.mm.yyyy'), 'N/A'));    
     V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата выпуска ГТД>', NVL(TO_CHAR(V_DATE_OUT_GTD,'dd.mm.yyyy'), 'N/A'));
     V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата отгрузки>', NVL(TO_CHAR(V_DATE_IN,'dd.mm.yyyy'), 'N/A'));
     V_MSG_INFO := REPLACE(V_MSG_INFO, '<дата выгрузки>',NVL(TO_CHAR(V_VOCH_DATE,'dd.mm.yyyy'), 'N/A'));
@@ -1117,8 +1160,9 @@ begin
   P_MESSAGE_TEXT:=SET_VALUES_MESSAGES(V_ORD_ID, P_MESSAGE_TEXT);
   P_tm_ms_def:=rtrim(Substr(SET_VALUES_MESSAGES(V_ORD_ID, P_tm_ms_def),1,199));
 
-  -- Отправлять письмо или нет
-  if INSTR(LOWER(P_MESSAGE_TEXT),LOWER('N/A<NOT>'))<>0 then
+  -- Не отправлять письмо если есть не заполненные данные по шаблону 
+ -- 28.03.2018 if INSTR(LOWER(P_MESSAGE_TEXT),LOWER('N/A<NOT>'))<>0 then
+  if INSTR(LOWER(P_MESSAGE_TEXT),LOWER('N/A'))<>0 then
       P_MESSAGE_TEXT:='NOT';
 	end if;
 
@@ -1257,7 +1301,7 @@ begin
   if V_message_text='NOT' then
 	   Begin
        UPDATE messages2customers
-	        SET send_date=sysdate,
+	        SET send_date=null,
               send_to=V_send_to,
               message_text=V_message_text,
               HOLD_HOLD_ID=V_HOLD_HOLD_ID,
@@ -1282,16 +1326,16 @@ begin
                      p_rcvr_email=>V_send_to,
                      p_subject=>V_tm_ms_def,
                      p_text=>V_message_text)=0 then
-        select instr(V_send_to_last,emails_id.e_m)
+        /*select instr(V_send_to_last,emails_id.e_m)
           into V_povtor_email
           from dual;
         if V_povtor_email=0 or nvl(V_povtor_email,0)=0 then
            V_send_to_last := ltrim(V_send_to_last||', '||emails_id.e_m,', ');
-        end if;
+        end if;*/
   	    Begin
            UPDATE messages2customers
 	            SET send_date=sysdate,
-                  send_to=V_send_to_last,
+                  send_to=V_send_to,
                   message_text=V_message_text,
                   HOLD_HOLD_ID=V_HOLD_HOLD_ID,
                   CLNT_CLNT_ID=V_CLNT_CLNT_ID,
@@ -1301,7 +1345,7 @@ begin
           WHEN OTHERS THEN
               ins_sys_logs_autonomous(ApplId => 21,
               Message => SQLERRM||' не может сделать UPDATE messages2customers по MSCM_ID='||Dan.MSCM_ID||
-                                  ' но все параметры определены send_to='||V_send_to_last||
+                                  ' но все параметры определены send_to='||V_send_to||
                                   ' CLNT_CLNT_ID='||V_CLNT_CLNT_ID||' message_text='||V_message_text||
                                   ' message_thema='|| V_tm_ms_def,
               LogDate => sysdate);

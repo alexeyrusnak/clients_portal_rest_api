@@ -19,3 +19,15 @@ create or replace synonym t_mcsf_api_unit for sbc.t_mcsf_api_unit;
 create or replace synonym tbl_mcsf_api_units for sbc.tbl_mcsf_api_units;
 
 create or replace synonym t_mcsf_api_order_doc_zip for sbc.t_mcsf_api_order_doc_zip;
+
+create or replace synonym T_POINT for sbc.T_POINT;
+create or replace synonym T_CARGO for sbc.T_CARGO;
+
+create or replace synonym TBL_MESSAGE for sbc.TBL_MESSAGE;
+create or replace synonym TBL_CARGO for sbc.TBL_CARGO;
+
+create or replace synonym mcsf_api for sbc.mcsf_api;
+create or replace synonym mcsf_api_test for sbc.mcsf_api_test;
+
+create or replace synonym stragg for sbc.stragg;
+
