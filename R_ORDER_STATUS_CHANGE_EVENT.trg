@@ -7,7 +7,8 @@ CREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
    REVISIONS:
    Ver        Date        Author           Description
    ---------  ----------  ---------------  ------------------------------------
-   1.0        27.01.2018  R-abik           1. Создан триггер.
+   1.0        27.01.2018  R-abik           Создан триггер.
+   1.1        14.05.2018  R-abik           Рассылка всем контактам из карточки
 
 ******************************************************************************/
 
@@ -58,19 +59,8 @@ BEGIN
       from holding_dic h
      where h.del_date is null;
   
-    -- Почтовый ящик и ИД клиента
-    select cl.email, o.clnt_clnt_id
-      into lEmail, lClntId
-      from client_contacts cl, orders o
-     where o.ord_id = lOrdId
-       and cl.clcn_id(+) = o.clcn_clcn_id
-       and cl.email is not null
-       and rownum = 1;
-    
-    -- Останавливаем если нет e-mail
-    if lEmail is null then
-      return;
-    end if;
+    -- ИД клиента
+    select o.clnt_clnt_id into lClntId from orders o where o.ord_id = lOrdId;
        
     -- Номер заявки клиента
    select o.internal_number, fr.def
@@ -172,34 +162,46 @@ BEGIN
     lMess := replace(lMess, '<новый статус>', lNewStatusDef);
     lMess := replace(lMess, '<груз>', lOrdFreightDef);
     
-    -- Запись сообщения в таблицу для рассылки
-    insert into messages2customers
-      (mscm_id,
-       message_date,
-       send_to,
-       clnt_clnt_id,
-       message_text,
-       message_thema,
-       ord_ord_id,
-       delivery_type,
-       hold_hold_id,
-       send_date,
-       store_days,
-       event_id)
-    values
-      (mscm_seq.nextval,
-       sysdate,
-       lEmail,
-       lClntId,
-       lMess,
-       lMessSubject,
-       lOrdId,
-       0,
-       lHoldId,
-       null,
-       3,
-       lNewOrstId);
-  
+    -- Бежим по всем контактам заказа
+    for lR in (select cnt.email, o.clnt_clnt_id
+                from clrq_contacts cc,
+                     client_contacts cnt,
+                     orders o 
+                where o.ord_id = lOrdId
+                  and cc.clrq_clrq_id = o.clrq_clrq_id 
+                  and cc.clcn_clcn_id = cnt.clcn_id
+                   and cc.del_user is null
+                   and cnt.email is not null
+                   and cc.send_message = 1) 
+    loop
+      -- Запись сообщения в таблицу для рассылки
+      insert into messages2customers
+        (mscm_id,
+         message_date,
+         send_to,
+         clnt_clnt_id,
+         message_text,
+         message_thema,
+         ord_ord_id,
+         delivery_type,
+         hold_hold_id,
+         send_date,
+         store_days,
+         event_id)
+      values
+        (mscm_seq.nextval,
+         sysdate,
+         lR.Email,
+         lR.Clnt_Clnt_Id,
+         lMess,
+         lMessSubject,
+         lOrdId,
+         0,
+         lHoldId,
+         null,
+         3,
+         lNewOrstId);
+    end loop;
   exception
     when others then
       ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,
