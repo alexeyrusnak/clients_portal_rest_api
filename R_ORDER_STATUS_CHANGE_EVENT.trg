@@ -9,15 +9,15 @@ CREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
    ---------  ----------  ---------------  ------------------------------------
    1.0        27.01.2018  R-abik           Создан триггер.
    1.1        14.05.2018  R-abik           Рассылка всем контактам из карточки
+   1.2        15.05.2018  R-abik           Устранение дублирования, если статус не изменился
 
 ******************************************************************************/
 
-  BEFORE INSERT OR UPDATE OF ORST_ORST_ID ON ORST_HISTORIES
+  BEFORE INSERT ON ORST_HISTORIES
   FOR EACH ROW
 
 DECLARE
   lHoldId number;
-  lEmail  varchar2(100);
   lClntId number;
   lOrdNumber varchar2(150);
   lOrdFreightDef varchar2(200);
@@ -52,6 +52,23 @@ BEGIN
   
     -- ИД заказа
     lOrdId := :new.ord_ord_id;
+    
+    -- ИД предыдущего статуса
+    begin
+      select tt.orst_orst_id
+        into lOldOrstId
+        from (select t.*, max(t.orhs_id) over() as max_orhs_id
+                from orst_histories t where t.ord_ord_id = lOrdId) tt
+       where tt.orhs_id = max_orhs_id;
+    exception
+      when others then
+        lOldOrstId := null;
+    end;
+    
+    -- Если статус по факту не изменился, ничего не отправляем
+    if lOldOrstId = lNewOrstId then
+      return;
+    end if;
   
     -- ИД холдинга
     select min(h.hold_id)
@@ -90,19 +107,7 @@ BEGIN
         -- Если нет шаблона или нет подписки на шаблон, выходим
         return;
     end;
-  
-    -- ИД предыдущего статуса
-    begin
-      select tt.orst_orst_id
-        into lOldOrstId
-        from (select t.*, max(t.orhs_id) over() as max_orhs_id
-                from orst_histories t where t.ord_ord_id = lOrdId) tt
-       where tt.orhs_id = max_orhs_id;
-    exception
-      when others then
-        lOldOrstId := null;
-    end;
-  
+    
     -- Предыдущий статус
     begin
       select t.def
