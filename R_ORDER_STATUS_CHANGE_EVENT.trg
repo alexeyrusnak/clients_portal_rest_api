@@ -167,19 +167,7 @@ BEGIN
     lMess := replace(lMess, '<новый статус>', lNewStatusDef);
     lMess := replace(lMess, '<груз>', lOrdFreightDef);
     
-    -- Ѕежим по всем контактам заказа
-    for lR in (select cnt.email, o.clnt_clnt_id
-                from clrq_contacts cc,
-                     client_contacts cnt,
-                     orders o 
-                where o.ord_id = lOrdId
-                  and cc.clrq_clrq_id = o.clrq_clrq_id 
-                  and cc.clcn_clcn_id = cnt.clcn_id
-                   and cc.del_user is null
-                   and cnt.email is not null
-                   and cc.send_message = 1) 
-    loop
-      -- «апись сообщени€ в таблицу дл€ рассылки
+    -- «апись сообщени€ в таблицу дл€ рассылки
       insert into messages2customers
         (mscm_id,
          message_date,
@@ -196,8 +184,8 @@ BEGIN
       values
         (mscm_seq.nextval,
          sysdate,
-         lR.Email,
-         lR.Clnt_Clnt_Id,
+         'should be filled from order',
+         lClntId,
          lMess,
          lMessSubject,
          lOrdId,
@@ -206,7 +194,7 @@ BEGIN
          null,
          3,
          lNewOrstId);
-    end loop;
+         
   exception
     when others then
       ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,

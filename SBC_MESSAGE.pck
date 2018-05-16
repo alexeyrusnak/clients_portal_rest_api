@@ -52,19 +52,19 @@ FUNCTION SBC_SendMail(p_rcvr_name  in varchar2 default 'Ваше лицо', -- Имя получ
                       p_subject    in varchar2 ,  -- Тема письма
                       p_text       in varchar2 , -- текст письма
                       P_MES_EMAIL_FROM   in varchar2 default null,  -- Имя пользователя, от имени которого отправляется почта
-			            		P_MES_EMAIL_NAME   in varchar2 default null,  -- Имя владельца (пользователя) почтового ящика
+                      P_MES_EMAIL_NAME   in varchar2 default null,  -- Имя владельца (пользователя) почтового ящика
                       P_MES_EMAIL_SERVER in varchar2 default null,  -- Имя почтового сервера для отправки сообщений
                       P_MES_EMAIL_PASSW  in varchar2 default null,  -- Пароль пользователя, от которого отправляется почта
-            					P_MES_EMAIL_PORT varchar2 default null,       -- Порт для почтового сервера
-  					          P_MES_EMAIL_AUTH boolean default null,        -- Использовать авторизацию на сервере
+                      P_MES_EMAIL_PORT varchar2 default null,       -- Порт для почтового сервера
+                      P_MES_EMAIL_AUTH boolean default null,        -- Использовать авторизацию на сервере
                       p_attachment_name  in varchar2 default null,  -- Наименование файла
                       p_attachment_mimetype varchar2 default null,  -- Тип кодировки файла
-						          P_BLOB Blob default null,                     -- Сам файл
+                      P_BLOB Blob default null,                     -- Сам файл
                       p_rcvr_email_copy varchar2 default null       -- Список адресатор в копии письма
                      ) RETURN NUMBER;
   -- Процедура генерации прикладной ошибки
 PROCEDURE RaiseError(
-					   TEXT varchar2 -- Текст ошибки
+             TEXT varchar2 -- Текст ошибки
                       ,CODE number default -20000  -- Код ошибки
                        );
 
@@ -79,9 +79,9 @@ PROCEDURE HandleError(
 PROCEDURE IE_TEMPLATES_MESSAGES(P_DEF TEMPLATES_MESSAGES.DEF%TYPE  -- Наименование
                                     ,P_APPL_APPL_ID TEMPLATES_MESSAGES.APPL_APPL_ID%TYPE  -- Приложение
                                     ,P_MESSAGES_TEXT TEMPLATES_MESSAGES.MESSAGES_TEXT%TYPE  -- Текст шаблона
-									,P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null  -- Количество дней
-									,P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null -- Дата удаления
-									,P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null -- Кто удалил
+                  ,P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null  -- Количество дней
+                  ,P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null -- Дата удаления
+                  ,P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null -- Кто удалил
                                     ,P_TM_ID TEMPLATES_MESSAGES.TM_ID%TYPE DEFAULT NULL  -- Код шаблона
                                      );
 
@@ -92,7 +92,7 @@ FUNCTION GET_VALUES_MESSAGES(P_APPL_APPL_ID IN NUMBER default null) RETURN TBL_V
 -- Заменяет переменные в тексте шаблона на значения и возвращяет готовый текст
 FUNCTION SET_VALUES_MESSAGES(P_ORD_ID   ORDERS.ORD_ID%TYPE,  -- Код заказа
                              P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE -- Текст шаблона
-							  ) RETURN VARCHAR2;
+                ) RETURN VARCHAR2;
 
 -- Добавить сообщение
 PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type  -- Код статуса
@@ -103,9 +103,9 @@ PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type  -- Код статуса
 -- Обработка сообщения
 PROCEDURE EXE_Message(P_MSCM_ID MESSAGES2CUSTOMERS.MSCM_ID%type,  -- Код сообщения
                       P_message_text OUT MESSAGES2CUSTOMERS.message_text%type,  -- Текс сообщения
-					            P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- Адрес отправителя
-				           	  P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- Холдинг
-			          		  P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- Клиент
+                      P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- Адрес отправителя
+                      P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- Холдинг
+                      P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- Клиент
                       P_orst_tmms  MESSAGES2CUSTOMERS.orst_tmms%type, -- Если P_orst_tmms = 0 то передали ORST_ID, а если P_orst_tmms = 1 то передали TM_ID
                       P_tm_ms_def OUT templates_messages.def%type); -- заголовок сообщения
 
@@ -152,12 +152,12 @@ CURVAL VARCHAR2(255);
          WHERE CODE = UPPER(Trim(Name_Param)) and appl_appl_id=ApplId;
      EXCEPTION
         WHEN NO_DATA_FOUND THEN
-	          Value_Param :='-';
+            Value_Param :='-';
      end;
-	   if Value_Param='-' then
+     if Value_Param='-' then
         HandleError(-20000, 'Не найден настроечный параметр:"'||UPPER(Trim(Name_Param))||'"', 'SET_PARAM_EMAIL');
-        --	 ins_sys_logs(ApplId=>ApplId,Message=>'Не найден настроечный параметр:"'||UPPER(Trim(Name_Param))||'"');
-	   end if;
+        --   ins_sys_logs(ApplId=>ApplId,Message=>'Не найден настроечный параметр:"'||UPPER(Trim(Name_Param))||'"');
+     end if;
      RETURN Value_Param;
   end;
 
@@ -199,12 +199,12 @@ begin
                           p_subject=>'Привет11', -- Тема письма
                           p_text=>'<font size="14px" >'||'<p>'||'Такие вот дела'||'</p></font>', -- текст письма
                           P_MES_EMAIL_FROM=>'test@mail.ru',   -- Имя пользователя, от имени которого отправляется почта
-						  P_MES_EMAIL_NAME=>'test', -- Имя владельца (пользователя) почтового ящика
+              P_MES_EMAIL_NAME=>'test', -- Имя владельца (пользователя) почтового ящика
                           P_MES_EMAIL_SERVER=>'smtp.mail.ru', -- Имя почтового сервера для отправки сообщений
                           P_MES_EMAIL_PASSW=>'test',  -- Пароль пользователя, от которого отправляется почта
-						  P_MES_EMAIL_PORT=>2525,  -- Порт для почтового сервера
-  						  P_MES_EMAIL_AUTH=>true  -- Использовать авторизацию на сервере
-						  );
+              P_MES_EMAIL_PORT=>2525,  -- Порт для почтового сервера
+                P_MES_EMAIL_AUTH=>true  -- Использовать авторизацию на сервере
+              );
   RAISE_APPLICATION_ERROR(-20000, 'Результат выполнения='||To_Char(nn));
 end;
 
@@ -214,14 +214,14 @@ FUNCTION SBC_SendMail(p_rcvr_name  in varchar2 default 'Ваше лицо', -- Имя получ
                       p_subject    in varchar2 ,  -- Тема письма
                       p_text       in varchar2 , -- текст письма
                       P_MES_EMAIL_FROM   in varchar2 default null,  -- Имя пользователя, от имени которого отправляется почта
-			            		P_MES_EMAIL_NAME   in varchar2 default null,  -- Имя владельца (пользователя) почтового ящика
+                      P_MES_EMAIL_NAME   in varchar2 default null,  -- Имя владельца (пользователя) почтового ящика
                       P_MES_EMAIL_SERVER in varchar2 default null,  -- Имя почтового сервера для отправки сообщений
                       P_MES_EMAIL_PASSW  in varchar2 default null,  -- Пароль пользователя, от которого отправляется почта
-            					P_MES_EMAIL_PORT varchar2 default null,       -- Порт для почтового сервера
-  					          P_MES_EMAIL_AUTH boolean default null,        -- Использовать авторизацию на сервере
+                      P_MES_EMAIL_PORT varchar2 default null,       -- Порт для почтового сервера
+                      P_MES_EMAIL_AUTH boolean default null,        -- Использовать авторизацию на сервере
                       p_attachment_name  in varchar2 default null,  -- Наименование файла
                       p_attachment_mimetype varchar2 default null,  -- Тип кодировки файла
-						          P_BLOB Blob default null,                     -- Сам файл
+                      P_BLOB Blob default null,                     -- Сам файл
                       p_rcvr_email_copy varchar2 default null       -- Список адресатор в копии письма
                      ) RETURN NUMBER IS
  V_RES              number;
@@ -281,7 +281,7 @@ BEGIN
    END IF;
    CASE pErrCode
       -- Стандартные исключения Oracle и доморощенные в SBConsulting
-	    WHEN -6530 then RaiseError('Попытка доступа к неинициализированной переменной (ACCESS_INTO_NULL)',pErrCode);
+      WHEN -6530 then RaiseError('Попытка доступа к неинициализированной переменной (ACCESS_INTO_NULL)',pErrCode);
       WHEN -6592 then RaiseError('Не найдено значение в операторе CASE (CASE_NOT_FOUND)',pErrCode);
       WHEN -6511 then RaiseError('Попытка открыть открытый курсор (CURSOR_ALREADY_OPEN)',pErrCode);
       WHEN -1    then RaiseError('Запись уже существует (DUP_VAL_ON_INDEX)',pErrCode);
@@ -307,9 +307,9 @@ END HandleError;
 PROCEDURE IE_TEMPLATES_MESSAGES(P_DEF TEMPLATES_MESSAGES.DEF%TYPE,                             -- Наименование
                                 P_APPL_APPL_ID TEMPLATES_MESSAGES.APPL_APPL_ID%TYPE,           -- Приложение
                                 P_MESSAGES_TEXT TEMPLATES_MESSAGES.MESSAGES_TEXT%TYPE,         -- Текст шаблона
-									              P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null,  -- Количество дней
-									              P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null,      -- Дата удаления
-									              P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null,      -- Кто удалил
+                                P_STORE_DAYS TEMPLATES_MESSAGES.STORE_DAYS%TYPE default null,  -- Количество дней
+                                P_DEL_DATE TEMPLATES_MESSAGES.DEL_DATE%TYPE default null,      -- Дата удаления
+                                P_DEL_USER TEMPLATES_MESSAGES.DEL_USER%TYPE default null,      -- Кто удалил
                                 P_TM_ID TEMPLATES_MESSAGES.TM_ID%TYPE DEFAULT NULL             -- Код шаблона
                                ) IS
 V_TM_ID number;
@@ -321,9 +321,9 @@ Begin
       RaiseError('Не ввели текст шаблона!!!');
    END IF;
    IF (trim(P_TM_ID) IS NULL) THEN
-	    EDIT := False;
-	    select TM_SEQ.nextval into V_TM_ID from dual;
-	 else
+      EDIT := False;
+      select TM_SEQ.nextval into V_TM_ID from dual;
+   else
       EDIT := True;
       V_TM_ID := P_TM_ID;
    END IF;
@@ -341,20 +341,20 @@ Begin
    end if;
 
    Begin
-	     if EDIT then -- Редактирование
-	        UPDATE TEMPLATES_MESSAGES
-	           SET TM_ID = P_TM_ID,
-	               DEF = P_DEF,
-		             APPL_APPL_ID = P_APPL_APPL_ID,
+       if EDIT then -- Редактирование
+          UPDATE TEMPLATES_MESSAGES
+             SET TM_ID = P_TM_ID,
+                 DEF = P_DEF,
+                 APPL_APPL_ID = P_APPL_APPL_ID,
                  MESSAGES_TEXT = P_MESSAGES_TEXT,
                  STORE_DAYS = P_STORE_DAYS,
                  DEL_DATE = P_DEL_DATE,
                  DEL_USER=P_DEL_USER
-	         WHERE TM_ID = V_TM_ID;
-	     Else -- Внесение нового
+           WHERE TM_ID = V_TM_ID;
+       Else -- Внесение нового
           INSERT into TEMPLATES_MESSAGES(TM_ID, DEF, APPL_APPL_ID, MESSAGES_TEXT, STORE_DAYS, DEL_DATE, DEL_USER)
           VALUES(V_TM_ID, P_DEF, P_APPL_APPL_ID, P_MESSAGES_TEXT, P_STORE_DAYS, P_DEL_DATE, P_DEL_USER);
-	     end if;
+       end if;
    EXCEPTION
       WHEN OTHERS THEN
          HandleError(SQLCODE, SQLERRM, 'IE_TEMPLATES_MESSAGES');
@@ -434,13 +434,13 @@ begin
     i:=i+1; P_VALUES_MESSAGES.extend;
     P_VALUES_MESSAGES(i):= t_VALUES_MESSAGES('<not>',null);
 
-	RETURN (P_VALUES_MESSAGES);
+  RETURN (P_VALUES_MESSAGES);
 end;
 
 -- Заменяет переменные в тексте шаблона на значения и возвращяет готовый текст
 FUNCTION SET_VALUES_MESSAGES(P_ORD_ID   ORDERS.ORD_ID%TYPE,                        -- Код заказа
                              P_MESSAGE_TEXT  MESSAGES2CUSTOMERS.MESSAGE_TEXT%TYPE  -- Текст шаблона
-							  ) RETURN VARCHAR2 IS
+                ) RETURN VARCHAR2 IS
 V_MSG_INFO     APP_PARAMETERS.VALUE_STRING%TYPE;
 V_ORD_NUMBER   ORDERS.ORD_NUMBER%TYPE;
 V_ORD_DATE     ORDERS.ORD_DATE%TYPE;
@@ -541,14 +541,14 @@ BEGIN
                            OW3.orws_id = cm.orws_orws_id and
                            cm.port_port_in_id = s.port_id(+) and
                            cm.del_date is Null
-               		   order by cm.cmr_id desc) loop
+                     order by cm.cmr_id desc) loop
             I:=I+1;
             SKLAD:=DAN.DEF;
             if I>=2 then
                exit;
             end if;
         end loop;
-	      V_SKLAD:=SKLAD;
+        V_SKLAD:=SKLAD;
       EXCEPTION
         WHEN OTHERS THEN
            V_SKLAD:=NULL;
@@ -610,8 +610,8 @@ BEGIN
          WHERE LP.ORD_ORD_ID = P_ORD_ID
            AND LP.SOURCE_TYPE = 0 -- основное место погрузки
            AND LP.SOURCE_CLNT_ID = CL.CLNT_ID(+)
-		   -- проверка на удаление погрузки
-		   and lp.DEL_DATE is null;
+       -- проверка на удаление погрузки
+       and lp.DEL_DATE is null;
       EXCEPTION
         WHEN OTHERS THEN
           V_SHORT_NAME:=NULL;
@@ -626,8 +626,8 @@ BEGIN
          WHERE LP.ORD_ORD_ID = P_ORD_ID
            AND LP.SOURCE_TYPE = 0
            AND LP.CITY_CITY_ID = C.CITY_ID
-		   -- проверка на удаление погрузки
-		   and lp.DEL_DATE is null;
+       -- проверка на удаление погрузки
+       and lp.DEL_DATE is null;
       EXCEPTION
         WHEN OTHERS THEN
           V_CITY_DEF:=null;
@@ -666,20 +666,20 @@ BEGIN
            AND K.TRSP_TRSP_ID = S.TRSP_ID(+)
            AND KNSM_TYPE = 2 -- Океанский
            AND O.ORD_ID = P_ORD_ID
-		   and Trim(S.DEF)<>'';
+       and Trim(S.DEF)<>'';
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           BEGIN
-	 	  	   select s_f.def
-		         INTO V_SHIP_DEF
-			       From orders o, KNOR_ORD KO, KNSM_ORDERS KR, KONOSAMENTS K,
-					        SHIPS S, transport_time_table tt, ships s_f, ORDER_WAYS  OW
-				    where o.ORD_ID=P_ORD_ID and
+           select s_f.def
+             INTO V_SHIP_DEF
+             From orders o, KNOR_ORD KO, KNSM_ORDERS KR, KONOSAMENTS K,
+                  SHIPS S, transport_time_table tt, ships s_f, ORDER_WAYS  OW
+            where o.ORD_ID=P_ORD_ID and
                   O.ORD_ID = KO.ORD_ORD_ID(+) AND
                   KO.KNOR_KNOR_ID = KR.KNOR_ID(+) AND
                   KR.KNSM_KNSM_ID = K.KNSM_ID(+) AND
-          				--and k.IS_CUSTOM=1  -- Есть отметка таможни
-				          K.TRSP_TRSP_ID = S.TRSP_ID(+) AND
+                  --and k.IS_CUSTOM=1  -- Есть отметка таможни
+                  K.TRSP_TRSP_ID = S.TRSP_ID(+) AND
                   k.tmtb_tmtb_id    = tt.tmtb_id(+) AND
                   tt.trsp_trsp_id   = s_f.trsp_id(+) AND
                   OW.ORWS_TYPE = 1 AND
@@ -687,14 +687,14 @@ BEGIN
                   k.KNSM_TYPE = 1 and rownum=1;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
-			         begin
+               begin
                   V_SHIP_DEF:=NULL;
-			         end;
+               end;
           END;
         WHEN TOO_MANY_ROWS THEN
-		       Begin
+           Begin
               V_SHIP_DEF:=null;
-		       end;
+           end;
       END;
     END IF;
 
@@ -821,10 +821,10 @@ BEGIN
     -- Проверка, есть такая переменная
     IF (INSTR(V_MSG_INFO, '<внутренний номер заказа>') > 0) THEN
       BEGIN
-	    	 select INTERNAL_NUMBER
-   		     INTO V_ORD_NAMER  -- Устанавливаем значение
-		       From orders o
-		      where O.ORD_ID=P_ORD_ID;
+         select INTERNAL_NUMBER
+           INTO V_ORD_NAMER  -- Устанавливаем значение
+           From orders o
+          where O.ORD_ID=P_ORD_ID;
       EXCEPTION
         WHEN OTHERS THEN
            V_ORD_NAMER := NULL;
@@ -834,7 +834,7 @@ BEGIN
     IF (INSTR(V_MSG_INFO, '<дата подачи>') > 0) THEN
       BEGIN
          select CP.GTD_DATE
-  		     into V_DATE_POD
+           into V_DATE_POD
            from custom_plans CP
           where cp.ord_ord_id  = P_ord_id;
       EXCEPTION
@@ -846,34 +846,34 @@ BEGIN
     IF (INSTR(V_MSG_INFO, '<планируемая дата прибытия>') > 0) THEN
       BEGIN
          /* 28.03.2018
-	       Select Decode(
-	              Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))
-	              ,'0',null,
-	              Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))) DT
-	         INTO V_DATE_PLAN  -- Устанавливаем значение
-		       From (select (select MAX(tt.eta_date) DT
-		                       FROM transport_time_table tt
-		                      where tt.tmtb_id in (select k.tmtb_tmtb_id
-		                                             FROM konosaments k
-		                                            WHERE k.knsm_id in (select ko.knsm_knsm_id
+         Select Decode(
+                Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))
+                ,'0',null,
+                Decode(NVL(TO_CHAR(DT1),'0'),'0',Decode(NVL(TO_CHAR(DT2),'0'),'0',NVL(TO_CHAR(DT3),'0'),NVL(TO_CHAR(DT2),'0')),NVL(TO_CHAR(DT1),'0'))) DT
+           INTO V_DATE_PLAN  -- Устанавливаем значение
+           From (select (select MAX(tt.eta_date) DT
+                           FROM transport_time_table tt
+                          where tt.tmtb_id in (select k.tmtb_tmtb_id
+                                                 FROM konosaments k
+                                                WHERE k.knsm_id in (select ko.knsm_knsm_id
                                                                       from knor_ord kd, knsm_orders ko
                                                                      where kd.ord_ord_id = P_ORD_ID and
                                                                            kd.knor_knor_id = ko.knor_id
                                                                      group by ko.knsm_knsm_id) AND
                                                       k.del_user is Null and
                                                       k.TMTB_TMTB_ID is not null)) DT1,
-					              -- выбираем Океанский коносамент
-					              (select  MAX(k.ETA_DATE) DT
-	 				                 FROM konosaments k
-					                WHERE k.knsm_id in (select ko.knsm_knsm_id
-					                                      from knor_ord kd, knsm_orders ko
+                        -- выбираем Океанский коносамент
+                        (select  MAX(k.ETA_DATE) DT
+                           FROM konosaments k
+                          WHERE k.knsm_id in (select ko.knsm_knsm_id
+                                                from knor_ord kd, knsm_orders ko
                                                where kd.ord_ord_id = P_ORD_ID and
                                                      kd.knor_knor_id = ko.knor_id
                                                group by ko.knsm_knsm_id) and
                                 k.KNSM_TYPE=2) DT2,
-					              -- Из истории
-					              (select ow.DATE_PLAN From order_ways ow where ow.ord_ord_id = P_ORD_ID and rownum=1) DT3
-		               From dual);
+                        -- Из истории
+                        (select ow.DATE_PLAN From order_ways ow where ow.ord_ord_id = P_ORD_ID and rownum=1) DT3
+                   From dual);
                    */
            begin        
               -- Берем дату прибыти из расписания движения судов по коносаменту, который предоставляется в таможню
@@ -975,7 +975,7 @@ end;
 PROCEDURE ADD_Message(P_ORST_ID ORDER_STATUSES.ORST_ID%type,        -- Код статуса
                       P_ORD_ORD_ID ORDERS.ORD_ID%type,              -- Код заказа
                       P_orst_tmms orders.stop_order%type default 0 -- Если P_orst_tmms = 0 то передали ORST_ID, а если P_orst_tmms = 1 то передали TM_ID
-					 ) IS
+           ) IS
 V_clnt_clnt_id number := null;
 V_HOLD_HOLD_ID number := null;
 V_MESSAGE_TEXT varchar2(2000);
@@ -1106,9 +1106,9 @@ END;
 -- Обработка сообщения
 PROCEDURE EXE_Message(P_MSCM_ID MESSAGES2CUSTOMERS.MSCM_ID%type,  -- Код сообщения
                       P_message_text OUT MESSAGES2CUSTOMERS.message_text%type,  -- Текс сообщения
-			          		  P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- Адрес отправителя
-					            P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- Холдинг
-					            P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- Клиент
+                      P_send_to OUT MESSAGES2CUSTOMERS.send_to%type,  -- Адрес отправителя
+                      P_HOLD_HOLD_ID OUT MESSAGES2CUSTOMERS.HOLD_HOLD_ID%type,  -- Холдинг
+                      P_CLNT_CLNT_ID OUT MESSAGES2CUSTOMERS.CLNT_CLNT_ID%type,  -- Клиент
                       P_orst_tmms MESSAGES2CUSTOMERS.orst_tmms%type         ,
                       P_tm_ms_def OUT templates_messages.def%type ) IS
 V_ORD_ID ORDERS.ORD_ID%type;
@@ -1151,7 +1151,7 @@ begin
             C.DEL_DATE is null;
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
-	      RaiseError('Возможно у заказа клиент помечен на удаление!! V_ORD_ID='||V_ORD_ID);
+        RaiseError('Возможно у заказа клиент помечен на удаление!! V_ORD_ID='||V_ORD_ID);
   end;
   IF (trim(P_HOLD_HOLD_ID) IS NULL) THEN
      RaiseError('У клиента нет холдинга!!!');
@@ -1164,7 +1164,7 @@ begin
  -- 28.03.2018 if INSTR(LOWER(P_MESSAGE_TEXT),LOWER('N/A<NOT>'))<>0 then
   if INSTR(LOWER(P_MESSAGE_TEXT),LOWER('N/A'))<>0 then
       P_MESSAGE_TEXT:='NOT';
-	end if;
+  end if;
 
   if P_MESSAGE_TEXT<>'NOT' then
      P_MESSAGE_TEXT:=REPLACE(P_MESSAGE_TEXT,'<NOT>','');
@@ -1188,11 +1188,11 @@ BEGIN
 -- Получили строку
   STR:=P_MESSAGE_TEXT;
   str2:=str;
-	-- Проверка - отправлять сообщение или нет
+  -- Проверка - отправлять сообщение или нет
     if INSTR(LOWER(str),LOWER('N/A<NOT>'))=0 then
      tmpVar:='1';
-	end if;
-	str:=REPLACE(str,'<NOT>','');
+  end if;
+  str:=REPLACE(str,'<NOT>','');
 
   LOOP
     str1:=SUBSTR(str2,INSTR(str2,'<b>'),INSTR(str2,'</b>')-INSTR(str2,'<b>')+4);
@@ -1220,13 +1220,13 @@ BEGIN
   end LOOP;
   IF NVL(LENGTH(STR),0)<>0 Then
 -- Обновление в базе
-	str:=REPLACE(str,'&','');
-	str:=REPLACE(str,'<b>','');
-	str:=REPLACE(str,'</b>','');
-	str:=REPLACE(str,'b>','');
-	str:=REPLACE(str,'<not>','');
-	str:=REPLACE(str,'<NOT>','');
-	RETURN STR;
+  str:=REPLACE(str,'&','');
+  str:=REPLACE(str,'<b>','');
+  str:=REPLACE(str,'</b>','');
+  str:=REPLACE(str,'b>','');
+  str:=REPLACE(str,'<not>','');
+  str:=REPLACE(str,'<NOT>','');
+  RETURN STR;
   END IF;
 END ;
 
@@ -1260,7 +1260,7 @@ begin
                        EVENT_ID not in (12009,12008) and
                        (((select COMPLETE_DATE From orders where ORD_ID=MC.ord_ord_id) is null) OR
                        ((select COMPLETE_DATE From orders where ORD_ID=MC.ord_ord_id)>sysdate)) and  -- Заказ не закрыт (дата фактического завершения заказа)
-           			       NOT((MC.SEND_TO='message_text') and (Trim(CL.Email) is null))
+                       NOT((MC.SEND_TO='message_text') and (Trim(CL.Email) is null))
                  order by MC.message_date)
                  where nn<100) loop
       V_send_to_last := '';
@@ -1270,8 +1270,8 @@ begin
                                   from dual
                                connect by regexp_substr(DAN.cl_Email,'[^,]+',1,level) is not null) e_m_fl    ) loop
 
-			   V_message_text:=DAN.message_text;
-			   V_send_to:=DAN.send_to;
+         V_message_text:=DAN.message_text;
+         V_send_to:=DAN.send_to;
          V_CLNT_CLNT_ID:=DAN.CLNT_CLNT_ID;
          V_orst_tmms_SMTM:=DAN.orst_tmms;
          V_fl_name:=emails_id.fl;
@@ -1279,9 +1279,9 @@ begin
          V_HOLD_HOLD_ID := DAN.HOLD_HOLD_ID;
 
          -- Обработать сообщение если не обработанно
-	       if (V_message_text='message_text') or (V_send_to='message_text') then
+         if (V_message_text='message_text') or (V_send_to='message_text') then
             Begin
-	             EXE_Message(P_MSCM_ID=>Dan.MSCM_ID,
+               EXE_Message(P_MSCM_ID=>Dan.MSCM_ID,
                            P_message_text=> V_message_text,
                            P_send_to=>send_to,
                            P_HOLD_HOLD_ID=>V_HOLD_HOLD_ID,
@@ -1296,12 +1296,12 @@ begin
 
 -- Если у сообщения не проставлен клиет то проставляем
   if (trim(V_CLNT_CLNT_ID) IS NULL) THEN V_CLNT_CLNT_ID:=CL_ID; end if;
-  if (trim(V_send_to) IS NULL) OR (trim(V_send_to)='message_text') THEN V_send_to:=emails_id.e_m; end if;
+  if (trim(V_send_to) IS NULL) OR (trim(V_send_to)='message_text') OR (trim(V_send_to)='should be filled from order') THEN V_send_to:=emails_id.e_m; end if;
 
   if V_message_text='NOT' then
-	   Begin
+     Begin
        UPDATE messages2customers
-	        SET send_date=null,
+          SET send_date=null,
               send_to=V_send_to,
               message_text=V_message_text,
               HOLD_HOLD_ID=V_HOLD_HOLD_ID,
@@ -1316,10 +1316,10 @@ begin
                          ' но НЕ ВСЕ параметры определены send_to='||V_send_to_last||' CLNT_CLNT_ID='||V_CLNT_CLNT_ID||
                          ' message_text='||V_message_text||' message_thema='|| V_tm_ms_def,
               LogDate => sysdate);
-	End;
-	end if;
+  End;
+  end if;
 
-	if (V_message_text<>'message_text') AND
+  if (V_message_text<>'message_text') AND
      (V_send_to<>'message_text')  AND
      (V_message_text<>'NOT')  AND (V_message_text<>'0') Then
      if SBC_SendMail(p_rcvr_name=>V_fl_name, -- 'Клиент',
@@ -1332,9 +1332,9 @@ begin
         if V_povtor_email=0 or nvl(V_povtor_email,0)=0 then
            V_send_to_last := ltrim(V_send_to_last||', '||emails_id.e_m,', ');
         end if;*/
-  	    Begin
+        Begin
            UPDATE messages2customers
-	            SET send_date=sysdate,
+              SET send_date=sysdate,
                   send_to=V_send_to,
                   message_text=V_message_text,
                   HOLD_HOLD_ID=V_HOLD_HOLD_ID,
@@ -1349,8 +1349,8 @@ begin
                                   ' CLNT_CLNT_ID='||V_CLNT_CLNT_ID||' message_text='||V_message_text||
                                   ' message_thema='|| V_tm_ms_def,
               LogDate => sysdate);
-	      End;
-	   end if;
+        End;
+     end if;
   end if;
   commit;
   end loop;
