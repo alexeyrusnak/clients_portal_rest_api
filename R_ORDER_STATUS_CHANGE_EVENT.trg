@@ -10,6 +10,7 @@ CREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
    1.0        27.01.2018  R-abik           —оздан триггер.
    1.1        14.05.2018  R-abik           –ассылка всем контактам из карточки
    1.2        15.05.2018  R-abik           ”странение дублировани€, если статус не изменилс€
+   1.3        23.05.2018  R-abik           ¬озможность применени€ нескольких шаблонов, возможность измен€ть тему, добалвены пол€ кол-во и ед.изм
 
 ******************************************************************************/
 
@@ -21,9 +22,16 @@ DECLARE
   lClntId number;
   lOrdNumber varchar2(150);
   lOrdFreightDef varchar2(200);
+  lOrdFreightQuantity number;
+  lOrdFreightUnit varchar2(50);
   
-  lMessTplDef varchar2(200) := '»зменение статуса заказа <номер за€вки>';
-  lMessTplDef02 varchar2(200) := '«а€вка <номер за€вки> прин€та в работу';
+  lMessTplDefCode11 varchar2(11) := '[R_OSE_1_1]'; --«а€вка <номер за€вки> прин€та в работу
+  lMessTplDefCode21 varchar2(11) := '[R_OSE_2_1]'; --»зменение статуса заказа <номер за€вки>
+  
+  lMessTplDefCode12 varchar2(11) := '[R_OSE_1_2]'; --«а€вка <номер за€вки> с грузом  '<груз>' прин€та в работу
+  lMessTplDefCode22 varchar2(11) := '[R_OSE_2_2]'; --»зменение статуса заказа <номер за€вки> с грузом  '<груз>'
+  
+  lMessTplDefSearchCodes t_infinity_str := t_infinity_str();
   
   lMess   varchar2(2000);
   lMessSubject varchar2(2000);
@@ -80,28 +88,44 @@ BEGIN
     select o.clnt_clnt_id into lClntId from orders o where o.ord_id = lOrdId;
        
     -- Ќомер за€вки клиента
-   select o.internal_number, fr.def
-     into lOrdNumber, lOrdFreightDef
-     from orders o, vOrd_Frgt vofr, freights fr
+   select o.internal_number, fr.def, ofr.quantity, u.short_name
+     into lOrdNumber, lOrdFreightDef, lOrdFreightQuantity, lOrdFreightUnit
+     from orders o, 
+          vOrd_Frgt vofr, 
+          freights fr, 
+          order_freights ofr,
+          units u
     where o.ord_id = lOrdId
       and o.ord_id = vofr.ord_ord_id(+)
-      and vofr.frgt_frgt_id = fr.frgt_id(+);
+      and vofr.frgt_frgt_id = fr.frgt_id(+)
+      and vofr.ordfr_id = ofr.ordfr_id(+)
+      and ofr.unit_unit_id = u.unit_id(+);    
+  
       
    -- ≈сли новый статус за€вки - 02, то отдельный шаблон
    if lNewOrstId = 2 then
-      lMessTplDef := lMessTplDef02;
+      lMessTplDefSearchCodes.Extend;
+      lMessTplDefSearchCodes(lMessTplDefSearchCodes.Count) := lMessTplDefCode11;
+      lMessTplDefSearchCodes.Extend;
+      lMessTplDefSearchCodes(lMessTplDefSearchCodes.Count) := lMessTplDefCode12;
+   else
+      lMessTplDefSearchCodes.Extend;
+      lMessTplDefSearchCodes(lMessTplDefSearchCodes.Count) := lMessTplDefCode21;
+      lMessTplDefSearchCodes.Extend;
+      lMessTplDefSearchCodes(lMessTplDefSearchCodes.Count) := lMessTplDefCode22;
    end if;
    
     -- Ўаблон сообщени€
     begin
-      select t.def, t.messages_text
+      select substr(t.def, 12), t.messages_text
         into lMessSubject, lMess
         from templates_messages t, message_subscriptions ms
        where ms.tm_tm_id = t.tm_id
          and ms.clnt_clnt_id = lClntId
          and ms.del_user is null
          and ms.del_date is null
-         and t.def = lMessTplDef;
+         and (t.def like lMessTplDefSearchCodes(1) || '%' or t.def like lMessTplDefSearchCodes(2) || '%')
+         and rownum = 1;
     exception
       when others then
         -- ≈сли нет шаблона или нет подписки на шаблон, выходим
@@ -159,13 +183,21 @@ BEGIN
     end;
     
     -- ѕодготовка сообщени€ и темы
+    lMessSubject := replace(lMessSubject, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
     lMessSubject := replace(lMessSubject, '<номер за€вки>', lOrdNumber);
+    lMessSubject := replace(lMessSubject, '<старый статус>', lOldStatusDef);
+    lMessSubject := replace(lMessSubject, '<новый статус>', lNewStatusDef);
+    lMessSubject := replace(lMessSubject, '<груз>', lOrdFreightDef);
+    lMessSubject := replace(lMessSubject, '<кол-во>', lOrdFreightQuantity);
+    lMessSubject := replace(lMessSubject, '<ед.изм>', lOrdFreightUnit);
     
     lMess := replace(lMess, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
     lMess := replace(lMess, '<номер за€вки>', lOrdNumber);
     lMess := replace(lMess, '<старый статус>', lOldStatusDef);
     lMess := replace(lMess, '<новый статус>', lNewStatusDef);
     lMess := replace(lMess, '<груз>', lOrdFreightDef);
+    lMess := replace(lMess, '<кол-во>', lOrdFreightQuantity);
+    lMess := replace(lMess, '<ед.изм>', lOrdFreightUnit);
     
     -- «апись сообщени€ в таблицу дл€ рассылки
       insert into messages2customers
