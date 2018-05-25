@@ -24,17 +24,17 @@ DECLARE
   lOrdFreightDef varchar2(200);
   lOrdFreightQuantity number;
   lOrdFreightUnit varchar2(50);
-  
+
   lMessTplDefCode11 varchar2(11) := '[R_OSE_1_1]'; --Заявка <номер заявки> принята в работу
   lMessTplDefCode21 varchar2(11) := '[R_OSE_2_1]'; --Изменение статуса заказа <номер заявки>
-  
+
   lMessTplDefCode12 varchar2(11) := '[R_OSE_1_2]'; --Заявка <номер заявки> с грузом  '<груз>' принята в работу
   lMessTplDefCode22 varchar2(11) := '[R_OSE_2_2]'; --Изменение статуса заказа <номер заявки> с грузом  '<груз>'
-  
+
   lMessTplDefSearchCodes t_infinity_str := t_infinity_str();
-  
-  lMess   varchar2(2000);
-  lMessSubject varchar2(2000);
+
+  lMess   varchar2(4000);
+  lMessSubject varchar2(4000);
 
   lOrdId number;
 
@@ -43,24 +43,24 @@ DECLARE
 
   lOldStatusDef varchar2(200);
   lNewStatusDef varchar2(200);
-  
+
   lArrTemp t_infinity_str;
 
 BEGIN
-  
+
   begin
-    
+
     -- ИД нового статуса
     lNewOrstId := :new.orst_orst_id;
-    
+
     -- Если новый статус заявки - 01, то ничего не отправляем
    if lNewOrstId = 1 then
       return;
    end if;
-  
+
     -- ИД заказа
     lOrdId := :new.ord_ord_id;
-    
+
     -- ИД предыдущего статуса
     begin
       select tt.orst_orst_id
@@ -72,36 +72,36 @@ BEGIN
       when others then
         lOldOrstId := null;
     end;
-    
+
     -- Если статус по факту не изменился, ничего не отправляем
     if lOldOrstId = lNewOrstId then
       return;
     end if;
-  
+
     -- ИД холдинга
     select min(h.hold_id)
       into lHoldId
       from holding_dic h
      where h.del_date is null;
-  
+
     -- ИД клиента
     select o.clnt_clnt_id into lClntId from orders o where o.ord_id = lOrdId;
-       
+
     -- Номер заявки клиента
    select o.internal_number, fr.def, ofr.quantity, u.short_name
      into lOrdNumber, lOrdFreightDef, lOrdFreightQuantity, lOrdFreightUnit
-     from orders o, 
-          vOrd_Frgt vofr, 
-          freights fr, 
+     from orders o,
+          vOrd_Frgt vofr,
+          freights fr,
           order_freights ofr,
           units u
     where o.ord_id = lOrdId
       and o.ord_id = vofr.ord_ord_id(+)
       and vofr.frgt_frgt_id = fr.frgt_id(+)
       and vofr.ordfr_id = ofr.ordfr_id(+)
-      and ofr.unit_unit_id = u.unit_id(+);    
-  
-      
+      and ofr.unit_unit_id = u.unit_id(+);
+
+
    -- Если новый статус заявки - 02, то отдельный шаблон
    if lNewOrstId = 2 then
       lMessTplDefSearchCodes.Extend;
@@ -114,7 +114,7 @@ BEGIN
       lMessTplDefSearchCodes.Extend;
       lMessTplDefSearchCodes(lMessTplDefSearchCodes.Count) := lMessTplDefCode22;
    end if;
-   
+
     -- Шаблон сообщения
     begin
       select substr(t.def, 12), t.messages_text
@@ -131,7 +131,7 @@ BEGIN
         -- Если нет шаблона или нет подписки на шаблон, выходим
         return;
     end;
-    
+
     -- Предыдущий статус
     begin
       select t.def
@@ -142,21 +142,21 @@ BEGIN
       when others then
         lOldStatusDef := null;
     end;
-    
+
     -- Удаляем лишний текст в статусе
     begin
-      
+
       lArrTemp := r_helper.splitstring(lOldStatusDef,'-');
-      
+
       if lArrTemp is not null then
         lOldStatusDef := lArrTemp(lArrTemp.LAST);
       end if;
-      
+
     exception
       when others then
         null;
     end;
-  
+
     -- Новый статус
     begin
       select t.def
@@ -167,21 +167,21 @@ BEGIN
       when others then
         lNewStatusDef := null;
     end;
-    
+
     -- Удаляем лишний текст в статусе
     begin
-      
+
       lArrTemp := r_helper.splitstring(lNewStatusDef,'-');
-      
+
       if lArrTemp is not null then
         lNewStatusDef := lArrTemp(lArrTemp.LAST);
       end if;
-      
+
     exception
       when others then
         null;
     end;
-    
+
     -- Подготовка сообщения и темы
     lMessSubject := replace(lMessSubject, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
     lMessSubject := replace(lMessSubject, '<номер заявки>', lOrdNumber);
@@ -190,7 +190,7 @@ BEGIN
     lMessSubject := replace(lMessSubject, '<груз>', lOrdFreightDef);
     lMessSubject := replace(lMessSubject, '<кол-во>', lOrdFreightQuantity);
     lMessSubject := replace(lMessSubject, '<ед.изм>', lOrdFreightUnit);
-    
+
     lMess := replace(lMess, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
     lMess := replace(lMess, '<номер заявки>', lOrdNumber);
     lMess := replace(lMess, '<старый статус>', lOldStatusDef);
@@ -198,7 +198,7 @@ BEGIN
     lMess := replace(lMess, '<груз>', lOrdFreightDef);
     lMess := replace(lMess, '<кол-во>', lOrdFreightQuantity);
     lMess := replace(lMess, '<ед.изм>', lOrdFreightUnit);
-    
+
     -- Запись сообщения в таблицу для рассылки
       insert into messages2customers
         (mscm_id,
@@ -226,7 +226,7 @@ BEGIN
          null,
          3,
          lNewOrstId);
-         
+
   exception
     when others then
       ins_sys_logs(ApplId   => SBC_MESSAGE.SET_ApplId,
