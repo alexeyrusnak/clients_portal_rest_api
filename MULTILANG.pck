@@ -79,10 +79,10 @@ CREATE OR REPLACE PACKAGE BODY MULTILANG IS
                             lang        in varchar2 default GET_LANGUAGE,
                             en_trscript in number default 1) return varchar2 is
 
-    res  varchar2(2000);
+    res  varchar2(4000);
     pos1 number;
     pos2 number;
-    str1 varchar2(2000);
+    str1 varchar2(4000);
   begin
 
     -- Если мультиязычная запись пока пуста
@@ -131,10 +131,10 @@ CREATE OR REPLACE PACKAGE BODY MULTILANG IS
                             lang in varchar2 default GET_LANGUAGE)
     return varchar2 deterministic is
 
-    res  varchar2(2000);
+    res  varchar2(4000);
     pos1 number;
     pos2 number;
-    str1 varchar2(2000);
+    str1 varchar2(4000);
   Begin
 
     -- Если мультиязычная запись пока пуста
@@ -279,11 +279,11 @@ function Format(FormatStr varchar2, S1 varchar2,
   S8 varchar2 := '', S9 varchar2 := '', S10 varchar2 := ''
 ) return varchar2
 is
-  Fs varchar2(2000) := FormatStr;
+  Fs varchar2(4000) := FormatStr;
   Pos int;
-  Res varchar2(2000);
+  Res varchar2(4000);
   ArgIndex int := 0;
-  Value varchar2(2000);
+  Value varchar2(4000);
   i int;
 
   function GetArg return varchar2
