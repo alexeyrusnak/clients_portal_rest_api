@@ -11,6 +11,7 @@ CREATE OR REPLACE TRIGGER R_ORDER_STATUS_CHANGE_EVENT
    1.1        14.05.2018  R-abik           –ассылка всем контактам из карточки
    1.2        15.05.2018  R-abik           ”странение дублировани€, если статус не изменилс€
    1.3        23.05.2018  R-abik           ¬озможность применени€ нескольких шаблонов, возможность измен€ть тему, добалвены пол€ кол-во и ед.изм
+   1.4        13.06.2018  R-abik           ƒобавлено поле <контейнер>
 
 ******************************************************************************/
 
@@ -24,6 +25,7 @@ DECLARE
   lOrdFreightDef varchar2(200);
   lOrdFreightQuantity number;
   lOrdFreightUnit varchar2(50);
+  lOrdContainer varchar2(100);
 
   lMessTplDefCode11 varchar2(11) := '[R_OSE_1_1]'; --«а€вка <номер за€вки> прин€та в работу
   lMessTplDefCode21 varchar2(11) := '[R_OSE_2_1]'; --»зменение статуса заказа <номер за€вки>
@@ -181,6 +183,29 @@ BEGIN
       when others then
         null;
     end;
+    
+    --  онтейнер
+    begin
+      select cn.cont_index || cn.cont_number
+        into lOrdContainer
+        from orders o, conteiners cn
+       where o.ord_id = lOrdId
+         and cn.cont_id(+) = o.cont_cont_id;
+    exception
+      when others then
+        lOrdContainer := null;
+    end;
+    if  lOrdContainer is null then
+       begin
+          select cont_index || cont_number
+            into lOrdContainer
+            from order_ways
+           where ord_ord_id = lOrdId and orws_type=1 ;
+       exception
+          when others then
+              lOrdContainer := '';
+       end;
+    end if;
 
     -- ѕодготовка сообщени€ и темы
     lMessSubject := replace(lMessSubject, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
@@ -190,6 +215,7 @@ BEGIN
     lMessSubject := replace(lMessSubject, '<груз>', lOrdFreightDef);
     lMessSubject := replace(lMessSubject, '<кол-во>', lOrdFreightQuantity);
     lMessSubject := replace(lMessSubject, '<ед.изм>', lOrdFreightUnit);
+    lMessSubject := replace(lMessSubject, '<контейнер>', lOrdContainer);
 
     lMess := replace(lMess, '<дата>', to_char(sysdate, 'dd.mm.yyyy'));
     lMess := replace(lMess, '<номер за€вки>', lOrdNumber);
@@ -198,6 +224,7 @@ BEGIN
     lMess := replace(lMess, '<груз>', lOrdFreightDef);
     lMess := replace(lMess, '<кол-во>', lOrdFreightQuantity);
     lMess := replace(lMess, '<ед.изм>', lOrdFreightUnit);
+    lMess := replace(lMess, '<контейнер>', lOrdContainer);
 
     -- «апись сообщени€ в таблицу дл€ рассылки
       insert into messages2customers

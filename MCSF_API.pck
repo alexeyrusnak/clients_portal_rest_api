@@ -23,9 +23,13 @@ create or replace package MCSF_API is
 -- Выдача списка заказов (orders)
 --*********************************************************************************************************************
   type t_order_record is record (
-   id                  t_orders.ord_id%type,                   -- Код заказа (id)
-   place_from          t_loading_places.address_source%type,   -- Адрес отправки
-   place_to            t_loading_places.address_source%type,   -- Адрес назначения
+   id                    t_orders.ord_id%type,                   -- Код заказа (id)
+   place_from            t_loading_places.address_source%type,   -- Адрес отправки
+   place_country_from    t_loading_places.address_source%type,   -- Страна отправки
+   place_city_from       t_loading_places.address_source%type,   -- Город отправки
+   place_to              t_loading_places.address_source%type,   -- Адрес назначения
+   place_country_to      t_loading_places.address_source%type,   -- Страна назначения
+   place_city_to         t_loading_places.address_source%type,   -- Город назначения
    status              order_statuses.def%type,                -- Оперативный статус заказа
    status_id           order_statuses.orst_id%type,            -- Идентификатор статуса
    date_closed         t_orders.complete_date%type,            --  Дата завершения заказа. Возвращается типом string
@@ -617,7 +621,11 @@ create or replace package body MCSF_API is
  
    lColsArr('id') := 'o.ord_id'; -- Код заказа (id)
    lColsArr('place_from') := 'lp.address_source || '' '' || cit_lp.def || '' '' || cou_lp.def'; -- Адрес отправки
+   lColsArr('place_country_from') := 'cou_lp.def'; -- Страна отправки
+   lColsArr('place_city_from') := 'cit_lp.def'; -- Город отправки
    lColsArr('place_to') := 'dp.address_source || '' ''|| cit_dp.def || '' '' || cou_dp.def'; -- Адрес назначения
+   lColsArr('place_country_to') := 'cou_dp.def'; -- Страна назначения
+   lColsArr('place_city_to') := 'cit_dp.def'; -- Город назначения
    lColsArr('status') := 'ost.def'; -- Оперативный статус
    lColsArr('status_id') := 'ost.orst_id'; -- Идентификатор статуса
    lColsArr('date_closed') := 'o.complete_date'; -- Дата завершения заказа
@@ -667,7 +675,11 @@ create or replace package body MCSF_API is
                                         
    lQueryCols := lColsArr('id') || ' id, ' ||
                  lColsArr('place_from') || ' place_from, ' ||
+                 lColsArr('place_country_from') || ' place_country_from, ' ||
+                 lColsArr('place_city_from') || ' place_city_from, ' ||
                  lColsArr('place_to') || ' place_to, ' ||
+                 lColsArr('place_country_to') || ' place_country_to, ' ||
+                 lColsArr('place_city_to') || ' place_city_to, ' ||
                  lColsArr('status') || ' status, ' ||
                  lColsArr('status_id') || ' status_id, ' ||
                  lColsArr('date_closed') || ' date_closed, ' ||

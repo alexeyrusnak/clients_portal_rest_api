@@ -964,7 +964,15 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('place_from', null, lFilter); -- Адрес отправки 
       
+      rest_api_helper.AddFilter('place_country_from', null, lFilter); -- Страна отправки 
+      
+      rest_api_helper.AddFilter('place_city_from', null, lFilter); -- Город отправки 
+      
       rest_api_helper.AddFilter('place_to', null, lFilter); -- Адрес назначения
+      
+      rest_api_helper.AddFilter('place_country_to', null, lFilter); -- Страна назначения
+      
+      rest_api_helper.AddFilter('place_city_to', null, lFilter); -- Город назначения
       
       rest_api_helper.AddFilter('consignor.id', '"consignor.id"', lFilter);
       
@@ -1059,7 +1067,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c029            => lRc."consignor.id",
                                      p_c030            => lRc."consignor.name",
                                      p_c031            => lRc."consignee.id",
-                                     p_c032            => lRc."consignee.name"
+                                     p_c032            => lRc."consignee.name",
+                                     p_c033            => lRc.place_country_from,
+                                     p_c034            => lRc.place_city_from,
+                                     p_c035            => lRc.place_country_to,
+                                     p_c036            => lRc.place_city_to
                                      );
         end loop;
       
@@ -1101,7 +1113,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c029 "consignor.id",
                          c.c030 "consignor.name",
                          c.c031 "consignee.id",
-                         c.c032 "consignee.name"
+                         c.c032 "consignee.name",
+                         c.c033 "place_country_from",
+                         c.c034 "place_city_from",
+                         c.c035 "place_country_to",
+                         c.c036 "place_city_to"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1113,7 +1129,11 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('seq_id', lRc."seq_id", true);
         apex_json.write('id', lRc."id", true);
         apex_json.write('place_from', lRc."place_from", true);
+        apex_json.write('place_country_from', lRc."place_country_from", true);
+        apex_json.write('place_city_from', lRc."place_city_from", true);
         apex_json.write('place_to', lRc."place_to", true);
+        apex_json.write('place_country_to', lRc."place_country_to", true);
+        apex_json.write('place_city_to', lRc."place_city_to", true);
         apex_json.write('status', lRc."status", true);
         apex_json.write('status_id', lRc."status_id", true);
         apex_json.write('date_closed', lRc."date_closed",true);              
