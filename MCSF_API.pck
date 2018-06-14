@@ -128,7 +128,13 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    rummages_count      number(10),                           -- Количество таможенных досмотров   
    rummages            tbl_mcsf_api_rummages,                -- Даты и виды досмотра 
    invoices            tbl_mcsf_api_invoices,                -- Массив счетов по заказу
-   delivery_car        t_mcsf_api_delivery_car               -- Информация об автомобиле доставки и водителе
+   delivery_car        t_mcsf_api_delivery_car,               -- Информация об автомобиле доставки и водителе
+   place_from            t_loading_places.address_source%type,   -- Адрес отправки
+   place_country_from    t_loading_places.address_source%type,   -- Страна отправки
+   place_city_from       t_loading_places.address_source%type,   -- Город отправки
+   place_to              t_loading_places.address_source%type,   -- Адрес назначения
+   place_country_to      t_loading_places.address_source%type,   -- Страна назначения
+   place_city_to         t_loading_places.address_source%type   -- Город назначения
  );
   type tbl_orders_extended is table of t_order_extended_record;
   
@@ -936,7 +942,11 @@ create or replace package body MCSF_API is
              g.date_out gtd_issuance, -- Дата выпуска ГТД
              c.driver_name,
              c.driver_phone,
-             car.state_number                   
+             car.state_number,
+             cou_lp.def place_country_from,
+             cit_lp.def place_city_from,
+             cou_dp.def place_country_to,
+             cit_dp.def place_city_to
          from t_orders o,
              clrq_orders co, 
              client_requests cl,  
@@ -959,7 +969,11 @@ create or replace package body MCSF_API is
              order_statuses ost,
              cmrs c,
              cars car,
-             vcmrs_last cmrl
+             vcmrs_last cmrl,
+             cities cit_dp,
+             cities cit_lp,
+             countries cou_dp,
+             countries cou_lp
        where o.ord_id = pID 
          and co.clrq_clrq_id   = cl.clrq_id 
          and cl.clnt_clnt_id   = pClntId      -- Отбор заказа не только по ИД заказа, но и по ИД клиента
@@ -977,12 +991,16 @@ create or replace package body MCSF_API is
          and lp.ldpl_type(+)   = 0
          and lp.del_date(+) is Null
          and lp.source_clnt_id = cl_lp.clnt_id(+)
+         and lp.city_city_id   = cit_lp.city_id(+)
+         and cit_lp.cou_cou_id = cou_lp.cou_id(+)
          -- Грузополучатель
          and o.ord_id          = dp.ord_ord_id(+)
          and dp.source_type(+) = 0
          and dp.ldpl_type(+)   = 1
          and dp.del_date(+) is Null
          and dp.source_clnt_id = cl_dp.clnt_id(+)
+         and dp.city_city_id   = cit_dp.city_id(+)
+         and cit_dp.cou_cou_id = cou_dp.cou_id(+)
          -- Коносамент
          and o.ord_id            = oc.ord_id(+)
          and oc.pod_port_id      = p_pod.port_id(+)
@@ -1014,6 +1032,10 @@ create or replace package body MCSF_API is
        vRow.consignee := t_mcsf_api_contractor_short(cur."consignee.id", cur."consignee.name");   -- Грузополучатель (Контрагент)
        vRow.created_at := cur.created_at; -- Дата создания заявки
        vRow.date_closed := cur.date_closed;  -- Дата закрытия заказа
+       vRow.place_country_from := cur.place_country_from;
+       vRow.place_city_from := cur.place_city_from;
+       vRow.place_country_to := cur.place_country_to;
+       vRow.place_city_to := cur.place_city_to;
      --  vRow.status := cur.status;         -- Текущий статус заказа 
        -- Сообщения менеджера  -------------------------
        /*

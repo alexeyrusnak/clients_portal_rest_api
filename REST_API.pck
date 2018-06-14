@@ -1295,6 +1295,10 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         --apex_json.write('receivable_status', l_c.receivable_status, true);
         apex_json.write('departure_port', l_c.departure_port, true);
         apex_json.write('departure_country', l_c.departure_country, true);
+        apex_json.write('place_country_from', l_c.place_country_from, true);
+        apex_json.write('place_city_from', l_c.place_city_from, true);
+        apex_json.write('place_country_to', l_c.place_country_to, true);
+        apex_json.write('place_city_to', l_c.place_city_to, true);
         apex_json.write('te_type', l_c.container_type, true);
         apex_json.write('container_prefix', l_c.container_prefix, true);
         apex_json.write('container_number', l_c.container_number, true);
