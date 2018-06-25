@@ -85,6 +85,8 @@ function PrepareSqlFilter(pFilterName varchar, pFileldName varchar default null)
 procedure AddFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2);
 
 procedure AddSortFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2);
+
+procedure SaveLog(pLog clob);
  
 end REST_API_HELPER;
 /
@@ -609,6 +611,15 @@ begin
   end if;
   
   return;
+end;
+
+procedure SaveLog(pLog clob) is
+begin
+  insert into rest_api_log (log_date, log) values (sysdate, pLog);
+  commit;
+exception
+  when others then
+    null;
 end;
 
 end REST_API_HELPER;

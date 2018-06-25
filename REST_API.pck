@@ -271,6 +271,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
   
   begin
     
+    rest_api_helper.SaveLog(pBody);
+    
     begin
       lWorkspaceId := apex_util.find_security_group_id(p_workspace => WorkspaceName);
       apex_util.set_security_group_id(p_security_group_id => lWorkspaceId);
@@ -642,6 +644,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
     sys.owa_util.http_header_close;
   
     HtpPrn(APEX_JSON.get_clob_output);
+    
+    rest_api_helper.SaveLog(APEX_JSON.get_clob_output);
   
     apex_json.free_output;
   
