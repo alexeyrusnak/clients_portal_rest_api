@@ -87,6 +87,8 @@ procedure AddFilter(pFilterName varchar, pFileldName varchar default null, pFilt
 procedure AddSortFilter(pFilterName varchar, pFileldName varchar default null, pFilters in out varchar2);
 
 procedure SaveLog(pLog clob);
+
+function ClobToVarcharTable(pClob clob) return apex_application_global.vc_arr2;
  
 end REST_API_HELPER;
 /
@@ -620,6 +622,29 @@ begin
 exception
   when others then
     null;
+end;
+
+function ClobToVarcharTable(pClob clob) return apex_application_global.vc_arr2 is
+  l_clob_tab apex_application_global.vc_arr2;
+begin
+  declare
+    c_max_vc2_size pls_integer := 8100; -- Bug with dbms_lob.substr 8191
+    l_offset pls_integer := 1;
+    l_clob_length pls_integer;
+  begin
+    l_clob_length := dbms_lob.getlength(pClob);
+    while l_offset <= l_clob_length loop
+      l_clob_tab(l_clob_tab.count + 1) :=
+        dbms_lob.substr (
+         lob_loc => pClob,
+         amount => least(c_max_vc2_size, l_clob_length - l_offset +1 ),
+         offset => l_offset);
+      l_offset := l_offset + c_max_vc2_size;
+    end loop;
+  end;
+  
+  return l_clob_tab;
+  
 end;
 
 end REST_API_HELPER;
