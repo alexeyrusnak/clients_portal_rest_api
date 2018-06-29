@@ -1323,7 +1323,9 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         -- rummages
         apex_json.open_array('rummages');
         for elem in 1 .. l_c.rummages.count loop
+          apex_json.open_object;
           rest_api_helper.PrintT_RUMMAGE(l_c.rummages(elem));
+          apex_json.close_object;
         end loop;
         apex_json.close_array;
       

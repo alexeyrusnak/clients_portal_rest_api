@@ -771,6 +771,8 @@ create or replace package body MCSF_API is
                   and cit_dp.cou_cou_id = cou_dp.cou_id(+)
                   and o.ord_id          = oc.ord_id(+)
                   and o.ord_id          = ow1.ord_ord_id(+)
+                  and ow1.orws_type(+)  = 1
+                  and ow1.del_user(+) is null
                   -- дс
                   and o.ord_id          = vd.ord_ord_id(+)
                   -- црд
@@ -831,7 +833,7 @@ create or replace package body MCSF_API is
    
    if pSortFilter is not null then
      lQuery := lQuery || ' order by ' || pSortFilter;
-   end if;  
+   end if;
  
    open lCursor for lQuery using pClntId;
  
