@@ -926,6 +926,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
       rest_api_helper.AddFilter('date_to', null, lFilter); -- Дата прибытия заказа
       
+      rest_api_helper.AddFilter('eta_date_fider', null, lFilter); -- Дата подхода
+      
       rest_api_helper.AddFilter('status', null, lFilter); -- Cтатус
       
       rest_api_helper.AddFilter('status_id', null, lFilter); -- Идентификатор статуса
@@ -1075,7 +1077,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c033            => lRc.place_country_from,
                                      p_c034            => lRc.place_city_from,
                                      p_c035            => lRc.place_country_to,
-                                     p_c036            => lRc.place_city_to
+                                     p_c036            => lRc.place_city_to,
+                                     p_c037            => to_char(lRc.eta_date_fider,PkgDefaultDateFormat)
                                      );
         end loop;
       
@@ -1121,7 +1124,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c033 "place_country_from",
                          c.c034 "place_city_from",
                          c.c035 "place_country_to",
-                         c.c036 "place_city_to"
+                         c.c036 "place_city_to",
+                         c.c037 "eta_date_fider"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1148,6 +1152,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('created_at', lRc."created_at", true);
         apex_json.write('date_from', lRc."date_from", true);
         apex_json.write('date_to', lRc."date_to", true);
+        apex_json.write('eta_date_fider', lRc."eta_date_fider", true);
         apex_json.write('te_type', lRc."te_type", true);
         apex_json.write('port_svh', lRc."port_svh", true);
         apex_json.write('departure_country', lRc."departure_country", true);
@@ -1309,6 +1314,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         apex_json.write('shipment_date', to_char(l_c.date_shipment, PkgDefaultDateFormat), true);
         apex_json.write('date_transshipment', to_char(l_c.date_transshipment, PkgDefaultDateFormat), true);
         apex_json.write('date_arrival', to_char(l_c.date_arrival, PkgDefaultDateFormat), true);
+        apex_json.write('eta_date_fider', to_char(l_c.eta_date_fider, PkgDefaultDateFormat), true);
         apex_json.write('date_upload', to_char(l_c.date_upload, PkgDefaultDateFormat), true);
         apex_json.write('date_export', to_char(l_c.date_export, PkgDefaultDateFormat), true);
         apex_json.write('customer_delivery_date', to_char(l_c.customer_delivery_date, PkgDefaultDateFormat), true);

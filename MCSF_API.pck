@@ -58,7 +58,8 @@ create or replace package MCSF_API is
    "consignor.id"                            clients.clnt_id%type,
    "consignor.name"                          clients.client_name%type,             -- Грузоотправитель (Контрагент)
    "consignee.id"                            clients.clnt_id%type,
-   "consignee.name"                          clients.client_name%type             -- Грузополучатель (Контрагент)
+   "consignee.name"                          clients.client_name%type,             -- Грузополучатель (Контрагент)
+   eta_date_fider                            transport_time_table.eta_date%type   -- Дата подхода
   );
   type tbl_orders is table of t_order_record;
 
@@ -114,6 +115,7 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    date_shipment       t_loading_places.source_date_plan%type,-- Дата погрузки судна    
    date_transshipment  konosaments.pot_date%type,            -- Дата подхода в порт перевалки
    date_arrival        transport_time_table.arrival_date%type,-- Дата прибытия 
+   eta_date_fider      transport_time_table.arrival_date%type,-- Дата подхода 
    date_upload         vouchers.voch_date%type,              -- Дата выгрузки
    date_export         cmrs.date_out%type,                   -- Дата вывоза
    customer_delivery_date         cmrs.date_in%type,         -- Дата доставки клиенту
@@ -646,7 +648,8 @@ create or replace package body MCSF_API is
    lColsArr('cargo_name') := 'fr.def'; -- Наименование груза
    lColsArr('created_at') := 'cl.ord_date'; -- Дата создания заказа
    lColsArr('date_from') := 'lp.source_date_plan'; -- Дата отправки заказа
-   lColsArr('date_to') := 'dp.source_date_plan'; -- Дата прибытия заказа
+   --lColsArr('date_to') := 'dp.source_date_plan'; -- Дата прибытия заказа
+   lColsArr('date_to') := 'nvl(oc.eta_date, ow1.date_plan)'; -- Дата подхода
    lColsArr('te_type') := '(case when con.cont_number is Null then null else con.cont_index || con.cont_number || '' (''||ctp.def||'')''end )'; -- Номер и тип ТЕ
    lColsArr('port_svh') := 'mcsf_api.GetPOD_ord(o.ord_id)'; -- Порт СВХ
    lColsArr('departure_country') := 'cou_lp.def'; -- Страна отправления груза
@@ -678,6 +681,8 @@ create or replace package body MCSF_API is
    
    lColsArr('consignee.id') := 'cl_dp.clnt_id';
    lColsArr('consignee.name') := 'cl_dp.client_name'; -- Грузополучатель (Контрагент)
+   
+   lColsArr('eta_date_fider') := 'nvl(oc.eta_date, ow1.date_plan)'; -- Дата подхода
                                         
    lQueryCols := lColsArr('id') || ' id, ' ||
                  lColsArr('place_from') || ' place_from, ' ||
@@ -714,7 +719,8 @@ create or replace package body MCSF_API is
                  lColsArr('consignor.id') || ' "consignor.id", ' ||
                  lColsArr('consignor.name') || ' "consignor.name", ' ||
                  lColsArr('consignee.id') || ' "consignee.id", ' ||
-                 lColsArr('consignee.name') || ' "consignee.name" ';
+                 lColsArr('consignee.name') || ' "consignee.name", ' ||
+                 lColsArr('eta_date_fider') || ' "eta_date_fider" ';
    
    lQueryFrom := 't_orders o, 
                   clrq_orders co, 
@@ -805,6 +811,7 @@ create or replace package body MCSF_API is
                'to_char(' || lColsArr('created_at') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_from') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                'to_char(' || lColsArr('date_to') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
+               'to_char(' || lColsArr('eta_date_fider') || ', ''' || PkgDefaultDateFormat || ''')' || ' || '' '' || ' ||
                lColsArr('te_type') || ' || '' '' || ' ||
                lColsArr('port_svh') || ' || '' '' || ' ||
                lColsArr('departure_country') || ' || '' '' || ' ||
@@ -931,7 +938,9 @@ create or replace package body MCSF_API is
             where ord.ord_ord_id = o.ord_id and
                   ko.knor_id = ord.knor_knor_id and
                   k.knsm_id = ko.knsm_knsm_id) date_transshipment,-- Дата подхода в порт перевалки
-             oc.arrival_date date_arrival,-- Дата прибытия       
+             --oc.arrival_date date_arrival,-- Дата прибытия 
+             nvl(oc.eta_date, ow1.date_plan) date_arrival,-- Дата подхода  
+             nvl(oc.eta_date, ow1.date_plan) eta_date_fider,-- Дата подхода     
              nvl(vd.voch_date, ow1.voch_date) date_upload,-- Дата выгрузки       
              ow3.date_out date_export,-- Дата вывоза  
              c.date_in customer_delivery_date, -- Дата доставки клиенту
@@ -1135,6 +1144,7 @@ create or replace package body MCSF_API is
        vRow.date_shipment := cur.date_shipment;
        vRow.date_transshipment := cur.date_transshipment;
        vRow.date_arrival := cur.date_arrival;
+       vRow.eta_date_fider := cur.eta_date_fider;
        vRow.date_upload := cur.date_upload;
        vRow.date_export := cur.date_export;
        vRow.date_submission := cur.date_submission;
