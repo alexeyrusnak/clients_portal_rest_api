@@ -920,6 +920,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                       
       rest_api_helper.AddFilter('id', null, lFilter); -- Идентификатор заказа
       
+      rest_api_helper.AddFilter('ord_number', null, lFilter); -- Идентификатор заказа
+      
       rest_api_helper.AddFilter('created_at', null, lFilter); -- Дата создания заказа
       
       rest_api_helper.AddFilter('date_from', null, lFilter); -- Дата отправки заказа
@@ -1078,7 +1080,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                                      p_c034            => lRc.place_city_from,
                                      p_c035            => lRc.place_country_to,
                                      p_c036            => lRc.place_city_to,
-                                     p_c037            => to_char(lRc.eta_date_fider,PkgDefaultDateFormat)
+                                     p_c037            => to_char(lRc.eta_date_fider,PkgDefaultDateFormat),
+                                     p_c038            => lRc.ord_number
                                      );
         end loop;
       
@@ -1125,7 +1128,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
                          c.c034 "place_city_from",
                          c.c035 "place_country_to",
                          c.c036 "place_city_to",
-                         c.c037 "eta_date_fider"
+                         c.c037 "eta_date_fider",
+                         c.c038 "ord_number"
                   
                     from apex_collections c
                    where c.collection_name = lCollectionName
@@ -1136,6 +1140,7 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
       
         apex_json.write('seq_id', lRc."seq_id", true);
         apex_json.write('id', lRc."id", true);
+        apex_json.write('ord_number', lRc."ord_number", true);
         apex_json.write('place_from', lRc."place_from", true);
         apex_json.write('place_country_from', lRc."place_country_from", true);
         apex_json.write('place_city_from', lRc."place_city_from", true);
@@ -1250,6 +1255,8 @@ CREATE OR REPLACE PACKAGE BODY REST_API AS
         cou := cou + 1;
         
         apex_json.write('id', l_c.id, true);
+        
+        apex_json.write('ord_number', l_c.ord_number, true);
         
         apex_json.open_object('consignor');          
         rest_api_helper.PrintT_CONTRACTOR_SHORT(l_c.consignor);

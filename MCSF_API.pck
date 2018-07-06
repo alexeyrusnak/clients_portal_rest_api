@@ -59,7 +59,8 @@ create or replace package MCSF_API is
    "consignor.name"                          clients.client_name%type,             -- Грузоотправитель (Контрагент)
    "consignee.id"                            clients.clnt_id%type,
    "consignee.name"                          clients.client_name%type,             -- Грузополучатель (Контрагент)
-   eta_date_fider                            transport_time_table.eta_date%type   -- Дата подхода
+   eta_date_fider                            transport_time_table.eta_date%type,   -- Дата подхода
+   ord_number                                client_requests.ord_number%type      -- Номер заявки
   );
   type tbl_orders is table of t_order_record;
 
@@ -136,7 +137,8 @@ type tbl_invcs_in_ord is table of t_invcs_in_ord; -- Массив счетов по заказу
    place_city_from       t_loading_places.address_source%type,   -- Город отправки
    place_to              t_loading_places.address_source%type,   -- Адрес назначения
    place_country_to      t_loading_places.address_source%type,   -- Страна назначения
-   place_city_to         t_loading_places.address_source%type   -- Город назначения
+   place_city_to         t_loading_places.address_source%type,   -- Город назначения
+   ord_number            client_requests.ord_number%type      -- Номер заявки
  );
   type tbl_orders_extended is table of t_order_extended_record;
   
@@ -628,6 +630,7 @@ create or replace package body MCSF_API is
  begin
  
    lColsArr('id') := 'o.ord_id'; -- Код заказа (id)
+   lColsArr('ord_number') := 'o.internal_number'; -- Номер заявки
    lColsArr('place_from') := 'lp.address_source || '' '' || cit_lp.def || '' '' || cou_lp.def'; -- Адрес отправки
    lColsArr('place_country_from') := 'cou_lp.def'; -- Страна отправки
    lColsArr('place_city_from') := 'cit_lp.def'; -- Город отправки
@@ -720,9 +723,10 @@ create or replace package body MCSF_API is
                  lColsArr('consignor.name') || ' "consignor.name", ' ||
                  lColsArr('consignee.id') || ' "consignee.id", ' ||
                  lColsArr('consignee.name') || ' "consignee.name", ' ||
-                 lColsArr('eta_date_fider') || ' "eta_date_fider" ';
+                 lColsArr('eta_date_fider') || ' eta_date_fider, ' ||
+                 lColsArr('ord_number') || ' ord_number ';
    
-   lQueryFrom := 't_orders o, 
+   lQueryFrom := 'orders o, 
                   clrq_orders co, 
                   client_requests cl,
                   t_loading_places lp,
@@ -799,6 +803,7 @@ create or replace package body MCSF_API is
    if pQueryFilter is not null then
      lQuery := lQuery || ' and lower(' ||
                lColsArr('id') || ' || '' '' || ' ||
+               lColsArr('ord_number') || ' || '' '' || ' ||
                lColsArr('place_from') || ' || '' '' || ' ||
                lColsArr('place_to') || ' || '' '' || ' ||
                lColsArr('status') || ' || '' '' || ' ||
@@ -870,6 +875,7 @@ create or replace package body MCSF_API is
  begin
     for cur in (
       select o.ord_id id,-- Идентификатор заказа
+             o.internal_number ord_number, -- Номер заказа клиента
              cl_lp.clnt_id "consignor.id",  
              cl_lp.client_name "consignor.name",-- Грузоотправитель (Контрагент) 
              cl_dp.clnt_id "consignee.id",       
@@ -958,7 +964,7 @@ create or replace package body MCSF_API is
              cit_lp.def place_city_from,
              cou_dp.def place_country_to,
              cit_dp.def place_city_to
-         from t_orders o,
+         from orders o,
              clrq_orders co, 
              client_requests cl,  
              order_ways ow1,    
@@ -1039,6 +1045,7 @@ create or replace package body MCSF_API is
          )
     loop
        vRow.id := cur.id;                 -- Идентификатор заказа
+       vRow.ord_number := cur.ord_number;   -- Номер заявки
        vRow.consignor := t_mcsf_api_contractor_short(cur."consignor.id", cur."consignor.name");   -- Грузоотправитель (Контрагент)
        vRow.consignee := t_mcsf_api_contractor_short(cur."consignee.id", cur."consignee.name");   -- Грузополучатель (Контрагент)
        vRow.created_at := cur.created_at; -- Дата создания заявки
